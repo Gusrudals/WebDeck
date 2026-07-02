@@ -58,3 +58,6 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .toolbar button:disabled { color: #9ca3af; cursor: default; }
 .toolbar .swatch { width: 18px; height: 18px; padding: 0; border: 1px solid #d1d5db; border-radius: 3px; }
 .bg-label { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #374151; }
+
+.dirty-dot { color: var(--wd-primary); }
+.error button { margin-left: 6px; font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid #b91c1c; border-radius: 4px; background: #fff; color: #b91c1c; cursor: pointer; }

@@ -41,3 +41,27 @@ function openViaInput(): Promise<OpenedFile | null> {
     input.click()
   })
 }
+
+interface WritableHandle {
+  createWritable?: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }>
+}
+
+/** FSA 핸들에 저장. createWritable 미지원(폴백으로 연 파일 등)이면 false */
+export async function saveToHandle(handle: FileSystemFileHandle, html: string): Promise<boolean> {
+  const w = handle as unknown as WritableHandle
+  if (typeof w.createWritable !== 'function') return false
+  const stream = await w.createWritable()
+  await stream.write(html)
+  await stream.close()
+  return true
+}
+
+export function downloadHtml(fileName: string, html: string): void {
+  const blob = new Blob([html], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  a.click()
+  URL.revokeObjectURL(url)
+}

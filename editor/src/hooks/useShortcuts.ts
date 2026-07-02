@@ -14,7 +14,12 @@ const ARROWS: Record<string, readonly [number, number]> = {
   ArrowDown: [0, 1],
 }
 
-export function useShortcuts(state: EditorState, dispatch: Dispatch<EditorAction>, idGen: () => string): void {
+export function useShortcuts(
+  state: EditorState,
+  dispatch: Dispatch<EditorAction>,
+  idGen: () => string,
+  onSave?: () => void,
+): void {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const { doc, currentSlideIndex, selectedIds, editingTextId, clipboard } = state
@@ -33,6 +38,11 @@ export function useShortcuts(state: EditorState, dispatch: Dispatch<EditorAction
       if (meta && key === 'y') {
         e.preventDefault()
         dispatch({ type: 'REDO' })
+        return
+      }
+      if (meta && key === 's') {
+        e.preventDefault()
+        onSave?.()
         return
       }
       if (!doc) return
@@ -91,5 +101,5 @@ export function useShortcuts(state: EditorState, dispatch: Dispatch<EditorAction
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [state, dispatch, idGen])
+  }, [state, dispatch, idGen, onSave])
 }

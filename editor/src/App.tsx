@@ -1,19 +1,28 @@
-import { useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
-import { openHtmlFile } from './file/fileAccess.ts'
+import { downloadHtml, openHtmlFile, saveToHandle } from './file/fileAccess.ts'
 import { createIdGen } from './model/id.ts'
 import { canRedo, canUndo } from './model/history.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
 import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts'
+import { checkRoundTrip } from './model/roundtrip.ts'
+import { serializeWebdeck } from './model/serialize.ts'
 import { SlidePanel } from './panels/SlidePanel.tsx'
 import { Toolbar } from './panels/Toolbar.tsx'
-import { editorReducer, initialEditorState } from './state/store.ts'
+import { editorReducer, initialEditorState, isDirty } from './state/store.ts'
 import { useShortcuts } from './hooks/useShortcuts.ts'
 
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
   const idGenRef = useRef(createIdGen('n'))
-  useShortcuts(state, dispatch, idGenRef.current)
+  useShortcuts(state, dispatch, idGenRef.current, handleSave)
+
+  useEffect(() => {
+    if (!isDirty(state)) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [state])
 
   async function handleOpen() {
     let opened
@@ -35,16 +44,62 @@ export function App() {
     }
   }
 
+  async function handleSave() {
+    const { doc, fileHandle, fileName } = state
+    if (!doc) return
+    const problem = checkRoundTrip(doc)
+    if (problem) {
+      dispatch({ type: 'SAVE_ERROR', message: `저장 중단: ${problem}` })
+      return
+    }
+    const html = serializeWebdeck(doc)
+    if (fileHandle) {
+      try {
+        if (await saveToHandle(fileHandle, html)) {
+          dispatch({ type: 'MARK_SAVED', doc })
+          return
+        }
+      } catch {
+        dispatch({ type: 'SAVE_ERROR', message: '파일에 저장하지 못했습니다 (권한 문제일 수 있음)' })
+        return
+      }
+    }
+    downloadHtml(fileName ?? 'webdeck.html', html)
+    dispatch({ type: 'MARK_SAVED', doc })
+  }
+
+  function handleDownloadFallback() {
+    const { doc, fileName } = state
+    if (!doc || checkRoundTrip(doc) !== null) return
+    downloadHtml(fileName ?? 'webdeck.html', serializeWebdeck(doc))
+    dispatch({ type: 'MARK_SAVED', doc })
+  }
+
   return (
     <div className="app">
       <header className="topbar">
         <h1>WebDeck 에디터</h1>
         <button type="button" onClick={handleOpen}>열기</button>
+        <button type="button" disabled={!state.doc} onClick={handleSave}>저장</button>
         <button type="button" disabled={!state.history || !canUndo(state.history)} onClick={() => dispatch({ type: 'UNDO' })}>실행 취소</button>
         <button type="button" disabled={!state.history || !canRedo(state.history)} onClick={() => dispatch({ type: 'REDO' })}>다시 실행</button>
-        {state.fileName && <span className="file-name">{state.fileName}</span>}
+        {state.fileName && (
+          <span className="file-name">
+            {state.fileName}
+            {isDirty(state) && <span className="dirty-dot" title="저장되지 않은 변경"> ●</span>}
+          </span>
+        )}
         {state.opaqueCount > 0 && <span className="notice">편집 불가 요소 {state.opaqueCount}개 보존됨</span>}
         {state.loadError && <span className="error" role="alert">{state.loadError}</span>}
+        {state.saveError && (
+          <span className="error" role="alert">
+            {state.saveError}
+            {/* 왕복 검증 차단('저장 중단')이면 손상 파일이므로 다운로드도 제안하지 않는다 */}
+            {!state.saveError.startsWith('저장 중단') && (
+              <button type="button" onClick={handleDownloadFallback}>다운로드로 저장</button>
+            )}
+          </span>
+        )}
       </header>
       <Toolbar state={state} dispatch={dispatch} idGen={idGenRef.current} />
       <aside className="side">

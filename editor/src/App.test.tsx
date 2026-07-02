@@ -59,3 +59,51 @@ test('WebDeck 문서가 아니면 오류를 표시한다', async () => {
   const alert = await screen.findByRole('alert')
   expect(alert.textContent).toContain('WebDeck 문서가 아닙니다')
 })
+
+function stubPickerWithWritable(name: string, text: string) {
+  const written: string[] = []
+  const handle = {
+    getFile: () => Promise.resolve({ name, text: () => Promise.resolve(text) }),
+    createWritable: () =>
+      Promise.resolve({
+        write: (d: string) => {
+          written.push(d)
+          return Promise.resolve()
+        },
+        close: () => Promise.resolve(),
+      }),
+  }
+  ;(window as unknown as { showOpenFilePicker?: () => Promise<unknown[]> }).showOpenFilePicker = () =>
+    Promise.resolve([handle])
+  return written
+}
+
+test('저장은 검증 통과 후 FSA 핸들에 쓴다', async () => {
+  const written = stubPickerWithWritable('report.html', VALID_DOC)
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '저장' }))
+  await vi.waitFor(() => expect(written).toHaveLength(1))
+  expect(written[0]).toContain('data-webdeck-version="1"')
+  expect(written[0]).toContain('첫 슬라이드 제목')
+})
+
+test('쓰기 실패 시 오류와 다운로드 폴백을 제안한다', async () => {
+  const handle = {
+    getFile: () => Promise.resolve({ name: 'r.html', text: () => Promise.resolve(VALID_DOC) }),
+    createWritable: () => Promise.reject(new Error('권한 거부')),
+  }
+  ;(window as unknown as { showOpenFilePicker?: () => Promise<unknown[]> }).showOpenFilePicker = () =>
+    Promise.resolve([handle])
+  URL.createObjectURL = vi.fn(() => 'blob:x')
+  URL.revokeObjectURL = vi.fn()
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '저장' }))
+  const alert = await screen.findByRole('alert')
+  expect(alert.textContent).toContain('저장하지 못했습니다')
+  await userEvent.click(screen.getByRole('button', { name: '다운로드로 저장' }))
+  expect(URL.createObjectURL).toHaveBeenCalled()
+})
