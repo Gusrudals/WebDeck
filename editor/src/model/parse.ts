@@ -11,6 +11,13 @@ export interface ParseOptions {
 const FRAME_PROPS = ['left', 'top', 'width', 'height'] as const
 const PX_VALUE = /^-?\d+(\.\d+)?px$/
 
+/** class 속성에서 known 토큰을 제외한 나머지를 원문 순서대로 반환 */
+function extraClassesOf(el: Element, known: string[]): string[] {
+  return (el.getAttribute('class') ?? '')
+    .split(/\s+/)
+    .filter((t) => t !== '' && !known.includes(t))
+}
+
 export function parseWebdeck(html: string, options: ParseOptions = {}): DeckDoc {
   const idGen = options.idGen ?? createIdGen()
   const dom = new DOMParser().parseFromString(html, 'text/html')
@@ -27,6 +34,13 @@ export function parseWebdeck(html: string, options: ParseOptions = {}): DeckDoc 
   const slideHeight = Number(deck.getAttribute('data-slide-height'))
   if (!(slideWidth > 0) || !(slideHeight > 0)) {
     throw new WebdeckParseError('deck의 data-slide-width/data-slide-height가 올바르지 않습니다')
+  }
+
+  const deckExtraClasses = extraClassesOf(deck, ['deck'])
+  const deckExtraAttrs: Record<string, string> = {}
+  for (const attr of Array.from(deck.attributes)) {
+    if (attr.name === 'class' || attr.name === 'data-slide-width' || attr.name === 'data-slide-height') continue
+    deckExtraAttrs[attr.name] = attr.value
   }
 
   const htmlAttrs: Record<string, string> = {}
@@ -59,7 +73,7 @@ export function parseWebdeck(html: string, options: ParseOptions = {}): DeckDoc 
     slides.push(parseSlide(child, idGen))
   }
 
-  return { title, slideWidth, slideHeight, headExtra, bodyAttrs, bodyExtra, bodyScript, htmlAttrs, slides }
+  return { title, slideWidth, slideHeight, deckExtraClasses, deckExtraAttrs, headExtra, bodyAttrs, bodyExtra, bodyScript, htmlAttrs, slides }
 }
 
 function parseSlide(section: Element, idGen: () => string): Slide {
@@ -70,7 +84,7 @@ function parseSlide(section: Element, idGen: () => string): Slide {
     extraAttrs[attr.name] = attr.value
   }
   const elements = Array.from(section.children).map((el) => parseElement(el, idGen))
-  return { id, bg: section.getAttribute('data-bg'), extraAttrs, elements }
+  return { id, bg: section.getAttribute('data-bg'), extraAttrs, extraClasses: extraClassesOf(section, ['slide']), elements }
 }
 
 function parseElement(el: Element, idGen: () => string): SlideElement {
@@ -92,9 +106,10 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
     if (attr.name === 'class' || attr.name === 'style' || attr.name === 'data-shape') continue
     extraAttrs[attr.name] = attr.value
   }
+  const extraClasses = extraClassesOf(el, ['el', 'el-text', 'el-image', 'el-shape'])
 
   if (el.classList.contains('el-text')) {
-    return { type: 'text', id, frame, extraStyle, extraAttrs, html: el.innerHTML.trim() }
+    return { type: 'text', id, frame, extraStyle, extraAttrs, extraClasses, html: el.innerHTML.trim() }
   }
   if (el.classList.contains('el-image')) {
     const imgs = el.querySelectorAll('img')
@@ -111,6 +126,7 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
       frame,
       extraStyle,
       extraAttrs,
+      extraClasses,
       src: img.getAttribute('src') ?? '',
       alt: img.getAttribute('alt') ?? '',
       imgStyle: img.getAttribute('style') ?? '',
@@ -121,7 +137,7 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
     const hasChildren = el.children.length > 0
     const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
     if (hasChildren || hasText) return opaque()
-    return { type: 'shape', id, frame, extraStyle, extraAttrs, shape: 'rect' }
+    return { type: 'shape', id, frame, extraStyle, extraAttrs, extraClasses, shape: 'rect' }
   }
   return opaque()
 }

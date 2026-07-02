@@ -12,6 +12,8 @@ interface ElementBase {
   extraStyle: Record<string, string>
   /** class/style/data-shape 외의 속성 — 왕복 보존 */
   extraAttrs: Record<string, string>
+  /** el/el-text·el-image·el-shape 외의 class 토큰 — 왕복 보존 (에디터 렌더에는 미적용) */
+  extraClasses: string[]
 }
 
 export interface TextElement extends ElementBase {
@@ -47,6 +49,8 @@ export interface Slide {
   bg: string | null
   /** class/data-bg 외의 section 속성 — 왕복 보존 */
   extraAttrs: Record<string, string>
+  /** slide 외의 class 토큰 — 왕복 보존 */
+  extraClasses: string[]
   elements: SlideElement[]
 }
 
@@ -54,6 +58,10 @@ export interface DeckDoc {
   title: string
   slideWidth: number
   slideHeight: number
+  /** deck 외의 main class 토큰 — 왕복 보존 */
+  deckExtraClasses: string[]
+  /** class/data-slide-width/data-slide-height 외의 main 속성 — 왕복 보존 */
+  deckExtraAttrs: Record<string, string>
   /** <head>에서 <title>/<meta charset>을 제외한 원문 (뷰어 CSS 포함) — 왕복 보존 */
   headExtra: string
   /** <body> 태그의 속성 — 왕복 보존 */

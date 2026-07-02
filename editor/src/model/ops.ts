@@ -90,7 +90,7 @@ export function moveElementZ(doc: DeckDoc, slideId: string, elementId: string, d
 // ---------- 슬라이드 커맨드 ----------
 
 export function addSlide(doc: DeckDoc, idGen: () => string, index?: number): DeckDoc {
-  const slide: Slide = { id: idGen(), bg: '#ffffff', extraAttrs: {}, elements: [] }
+  const slide: Slide = { id: idGen(), bg: '#ffffff', extraAttrs: {}, extraClasses: [], elements: [] }
   const slides = doc.slides.slice()
   slides.splice(index ?? slides.length, 0, slide)
   return { ...doc, slides }
@@ -111,6 +111,7 @@ export function duplicateSlide(doc: DeckDoc, slideId: string, idGen: () => strin
     id: idGen(),
     bg: src.bg,
     extraAttrs: { ...src.extraAttrs },
+    extraClasses: [...src.extraClasses],
     elements: src.elements.map((el) =>
       el.type === 'opaque'
         ? { ...el, id: idGen() }
@@ -140,13 +141,13 @@ export function setSlideBg(doc: DeckDoc, slideId: string, bg: string | null): De
 // ---------- 팩토리 ----------
 
 export function createTextElement(idGen: () => string, frame: Frame, html: string): TextElement {
-  return { type: 'text', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, html }
+  return { type: 'text', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, extraClasses: [], html }
 }
 
 export function createShapeElement(idGen: () => string, frame: Frame, background: string): ShapeElement {
-  return { type: 'shape', id: idGen(), frame: { ...frame }, extraStyle: { background }, extraAttrs: {}, shape: 'rect' }
+  return { type: 'shape', id: idGen(), frame: { ...frame }, extraStyle: { background }, extraAttrs: {}, extraClasses: [], shape: 'rect' }
 }
 
 export function createImageElement(idGen: () => string, frame: Frame, src: string, alt: string): ImageElement {
-  return { type: 'image', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, src, alt, imgStyle: 'width:100%; height:100%;' }
+  return { type: 'image', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, extraClasses: [], src, alt, imgStyle: 'width:100%; height:100%;' }
 }

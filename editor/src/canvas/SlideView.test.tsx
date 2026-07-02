@@ -30,6 +30,7 @@ describe('SlideView', () => {
       id: 's',
       bg: null,
       extraAttrs: {},
+      extraClasses: [],
       elements: [{ type: 'opaque' as const, id: 'o', html: '<div data-x="1">보존된 위젯</div>' }],
     }
     render(<SlideView slide={slide} width={1280} height={720} themeVars={{}} />)

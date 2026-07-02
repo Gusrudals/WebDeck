@@ -8,6 +8,9 @@ export function serializeWebdeck(doc: DeckDoc): string {
   const bodyExtra = doc.bodyExtra ? `\n${doc.bodyExtra}` : ''
   const bodyScript = doc.bodyScript ? `\n${doc.bodyScript}` : ''
 
+  const deckClass = ['deck', ...doc.deckExtraClasses].join(' ')
+  const deckExtra = attrsString(doc.deckExtraAttrs)
+
   return `<!DOCTYPE html>
 <html${htmlAttrs}>
 <head>
@@ -16,7 +19,7 @@ export function serializeWebdeck(doc: DeckDoc): string {
 ${doc.headExtra}
 </head>
 <body${bodyAttrs}>
-<main class="deck" data-slide-width="${doc.slideWidth}" data-slide-height="${doc.slideHeight}">
+<main class="${deckClass}" data-slide-width="${doc.slideWidth}" data-slide-height="${doc.slideHeight}"${deckExtra}>
 
 ${slides}
 
@@ -33,11 +36,17 @@ function attrsString(attrs: Record<string, string>): string {
 }
 
 function serializeSlide(slide: Slide): string {
+  const cls = ['slide', ...slide.extraClasses].join(' ')
   const bg = slide.bg === null ? '' : ` data-bg="${escapeAttr(slide.bg)}"`
   const extra = attrsString(slide.extraAttrs)
   const els = slide.elements.map((el) => `    ${serializeElement(el)}`).join('\n')
   const body = els ? `\n${els}\n  ` : '\n  '
-  return `  <section class="slide"${bg}${extra}>${body}</section>`
+  return `  <section class="${cls}"${bg}${extra}>${body}</section>`
+}
+
+function elementClass(el: KnownElement): string {
+  const base = { text: 'el el-text', image: 'el el-image', shape: 'el el-shape' }[el.type]
+  return [base, ...el.extraClasses].join(' ')
 }
 
 function serializeElement(el: SlideElement): string {
@@ -46,13 +55,13 @@ function serializeElement(el: SlideElement): string {
   const attrs = extraAttrsSuffix(el)
   switch (el.type) {
     case 'text':
-      return `<div class="el el-text" style="${escapeAttr(style)}"${attrs}>${el.html}</div>`
+      return `<div class="${elementClass(el)}" style="${escapeAttr(style)}"${attrs}>${el.html}</div>`
     case 'image': {
       const imgStyle = el.imgStyle ? ` style="${escapeAttr(el.imgStyle)}"` : ''
-      return `<div class="el el-image" style="${escapeAttr(style)}"${attrs}><img src="${escapeAttr(el.src)}" alt="${escapeAttr(el.alt)}"${imgStyle}></div>`
+      return `<div class="${elementClass(el)}" style="${escapeAttr(style)}"${attrs}><img src="${escapeAttr(el.src)}" alt="${escapeAttr(el.alt)}"${imgStyle}></div>`
     }
     case 'shape':
-      return `<div class="el el-shape" data-shape="rect" style="${escapeAttr(style)}"${attrs}></div>`
+      return `<div class="${elementClass(el)}" data-shape="rect" style="${escapeAttr(style)}"${attrs}></div>`
   }
 }
 

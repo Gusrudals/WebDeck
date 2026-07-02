@@ -7,6 +7,8 @@ function doc(slideCount = 3, opaquePerSlide = 0): DeckDoc {
     title: 't',
     slideWidth: 1280,
     slideHeight: 720,
+    deckExtraClasses: [],
+    deckExtraAttrs: {},
     headExtra: '',
     bodyAttrs: {},
     bodyExtra: '',
@@ -16,6 +18,7 @@ function doc(slideCount = 3, opaquePerSlide = 0): DeckDoc {
       id: `s-${i}`,
       bg: null,
       extraAttrs: {},
+      extraClasses: [],
       elements: Array.from({ length: opaquePerSlide }, (_, j) => ({
         type: 'opaque' as const,
         id: `o-${i}-${j}`,

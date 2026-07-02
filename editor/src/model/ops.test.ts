@@ -23,13 +23,14 @@ function fixture(): DeckDoc {
     id: gen(), // wd-1
     bg: '#ffffff',
     extraAttrs: {},
+    extraClasses: [],
     elements: [
-      { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, extraStyle: {}, extraAttrs: {}, shape: 'rect' }, // wd-2
-      { type: 'text', id: gen(), frame: { left: 10, top: 60, width: 200, height: 80 }, extraStyle: {}, extraAttrs: {}, html: '<p>a</p>' }, // wd-3
+      { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, extraStyle: {}, extraAttrs: {}, extraClasses: [], shape: 'rect' }, // wd-2
+      { type: 'text', id: gen(), frame: { left: 10, top: 60, width: 200, height: 80 }, extraStyle: {}, extraAttrs: {}, extraClasses: [], html: '<p>a</p>' }, // wd-3
       { type: 'opaque', id: gen(), html: '<div class="x"></div>' }, // wd-4
     ],
   }
-  return { title: 't', slideWidth: 1280, slideHeight: 720, headExtra: '', bodyAttrs: {}, bodyExtra: '', bodyScript: '', htmlAttrs: { 'data-webdeck-version': '1' }, slides: [slide] }
+  return { title: 't', slideWidth: 1280, slideHeight: 720, deckExtraClasses: [], deckExtraAttrs: {}, headExtra: '', bodyAttrs: {}, bodyExtra: '', bodyScript: '', htmlAttrs: { 'data-webdeck-version': '1' }, slides: [slide] }
 }
 
 describe('요소 커맨드', () => {
