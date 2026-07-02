@@ -45,6 +45,8 @@ export type KnownElement = TextElement | ImageElement | ShapeElement
 export interface Slide {
   id: string
   bg: string | null
+  /** class/data-bg 외의 section 속성 — 왕복 보존 */
+  extraAttrs: Record<string, string>
   elements: SlideElement[]
 }
 
@@ -54,6 +56,10 @@ export interface DeckDoc {
   slideHeight: number
   /** <head>에서 <title>/<meta charset>을 제외한 원문 (뷰어 CSS 포함) — 왕복 보존 */
   headExtra: string
+  /** <body> 태그의 속성 — 왕복 보존 */
+  bodyAttrs: Record<string, string>
+  /** <body> 직속의 main/script 외 요소 원문 — 왕복 보존 */
+  bodyExtra: string
   /** <body> 직속 <script> 원문 (뷰어 스크립트) — 왕복 보존 */
   bodyScript: string
   /** <html> 태그의 속성 전부 (lang, data-webdeck-version 등) */

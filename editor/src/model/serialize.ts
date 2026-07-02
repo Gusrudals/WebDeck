@@ -2,10 +2,10 @@ import { serializeInlineStyle } from './style.ts'
 import type { DeckDoc, KnownElement, Slide, SlideElement } from './types.ts'
 
 export function serializeWebdeck(doc: DeckDoc): string {
-  const htmlAttrs = Object.entries(doc.htmlAttrs)
-    .map(([name, value]) => ` ${name}="${escapeAttr(value)}"`)
-    .join('')
+  const htmlAttrs = attrsString(doc.htmlAttrs)
+  const bodyAttrs = attrsString(doc.bodyAttrs)
   const slides = doc.slides.map(serializeSlide).join('\n\n')
+  const bodyExtra = doc.bodyExtra ? `\n${doc.bodyExtra}` : ''
   const bodyScript = doc.bodyScript ? `\n${doc.bodyScript}` : ''
 
   return `<!DOCTYPE html>
@@ -15,22 +15,29 @@ export function serializeWebdeck(doc: DeckDoc): string {
 <title>${escapeText(doc.title)}</title>
 ${doc.headExtra}
 </head>
-<body>
+<body${bodyAttrs}>
 <main class="deck" data-slide-width="${doc.slideWidth}" data-slide-height="${doc.slideHeight}">
 
 ${slides}
 
-</main>${bodyScript}
+</main>${bodyExtra}${bodyScript}
 </body>
 </html>
 `
 }
 
+function attrsString(attrs: Record<string, string>): string {
+  return Object.entries(attrs)
+    .map(([name, value]) => ` ${name}="${escapeAttr(value)}"`)
+    .join('')
+}
+
 function serializeSlide(slide: Slide): string {
   const bg = slide.bg === null ? '' : ` data-bg="${escapeAttr(slide.bg)}"`
+  const extra = attrsString(slide.extraAttrs)
   const els = slide.elements.map((el) => `    ${serializeElement(el)}`).join('\n')
   const body = els ? `\n${els}\n  ` : '\n  '
-  return `  <section class="slide"${bg}>${body}</section>`
+  return `  <section class="slide"${bg}${extra}>${body}</section>`
 }
 
 function serializeElement(el: SlideElement): string {

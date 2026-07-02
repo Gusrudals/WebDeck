@@ -88,7 +88,7 @@ export function moveElementZ(doc: DeckDoc, slideId: string, elementId: string, d
 // ---------- 슬라이드 커맨드 ----------
 
 export function addSlide(doc: DeckDoc, idGen: () => string, index?: number): DeckDoc {
-  const slide: Slide = { id: idGen(), bg: '#ffffff', elements: [] }
+  const slide: Slide = { id: idGen(), bg: '#ffffff', extraAttrs: {}, elements: [] }
   const slides = doc.slides.slice()
   slides.splice(index ?? slides.length, 0, slide)
   return { ...doc, slides }
@@ -108,6 +108,7 @@ export function duplicateSlide(doc: DeckDoc, slideId: string, idGen: () => strin
   const copy: Slide = {
     id: idGen(),
     bg: src.bg,
+    extraAttrs: { ...src.extraAttrs },
     elements: src.elements.map((el) =>
       el.type === 'opaque'
         ? { ...el, id: idGen() }

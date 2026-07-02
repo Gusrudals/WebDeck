@@ -3,7 +3,7 @@ import { HISTORY_LIMIT, canRedo, canUndo, createHistory, push, redo, undo } from
 import type { DeckDoc } from './types.ts'
 
 function doc(title: string): DeckDoc {
-  return { title, slideWidth: 1280, slideHeight: 720, headExtra: '', bodyScript: '', htmlAttrs: {}, slides: [] }
+  return { title, slideWidth: 1280, slideHeight: 720, headExtra: '', bodyAttrs: {}, bodyExtra: '', bodyScript: '', htmlAttrs: {}, slides: [] }
 }
 
 describe('history', () => {

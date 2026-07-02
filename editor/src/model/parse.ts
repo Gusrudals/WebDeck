@@ -38,9 +38,17 @@ export function parseWebdeck(html: string, options: ParseOptions = {}): DeckDoc 
   headClone.querySelector('meta[charset]')?.remove()
   const headExtra = headClone.innerHTML.trim()
 
-  const bodyScript = Array.from(dom.body.children)
+  const bodyAttrs: Record<string, string> = {}
+  for (const attr of Array.from(dom.body.attributes)) bodyAttrs[attr.name] = attr.value
+
+  const bodyChildren = Array.from(dom.body.children)
+  const bodyScript = bodyChildren
     .filter((c) => c.tagName === 'SCRIPT')
     .map((s) => s.outerHTML)
+    .join('\n')
+  const bodyExtra = bodyChildren
+    .filter((c) => c.tagName !== 'SCRIPT' && c !== deck)
+    .map((c) => c.outerHTML)
     .join('\n')
 
   const slides: Slide[] = []
@@ -51,13 +59,18 @@ export function parseWebdeck(html: string, options: ParseOptions = {}): DeckDoc 
     slides.push(parseSlide(child, idGen))
   }
 
-  return { title, slideWidth, slideHeight, headExtra, bodyScript, htmlAttrs, slides }
+  return { title, slideWidth, slideHeight, headExtra, bodyAttrs, bodyExtra, bodyScript, htmlAttrs, slides }
 }
 
 function parseSlide(section: Element, idGen: () => string): Slide {
   const id = idGen()
+  const extraAttrs: Record<string, string> = {}
+  for (const attr of Array.from(section.attributes)) {
+    if (attr.name === 'class' || attr.name === 'data-bg') continue
+    extraAttrs[attr.name] = attr.value
+  }
   const elements = Array.from(section.children).map((el) => parseElement(el, idGen))
-  return { id, bg: section.getAttribute('data-bg'), elements }
+  return { id, bg: section.getAttribute('data-bg'), extraAttrs, elements }
 }
 
 function parseElement(el: Element, idGen: () => string): SlideElement {
@@ -87,6 +100,11 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
     const imgs = el.querySelectorAll('img')
     const img = imgs.length === 1 ? imgs[0] : null
     if (!img) return opaque()
+    const IMG_ATTRS = ['src', 'alt', 'style']
+    const hasExtraImgAttrs = Array.from(img.attributes).some((a) => !IMG_ATTRS.includes(a.name))
+    const hasExtraChildren = Array.from(el.children).some((c) => c !== img)
+    const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
+    if (hasExtraImgAttrs || hasExtraChildren || hasText) return opaque()
     return {
       type: 'image',
       id,
@@ -100,6 +118,9 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
   }
   if (el.classList.contains('el-shape')) {
     if (el.getAttribute('data-shape') !== 'rect') return opaque()
+    const hasChildren = el.children.length > 0
+    const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
+    if (hasChildren || hasText) return opaque()
     return { type: 'shape', id, frame, extraStyle, extraAttrs, shape: 'rect' }
   }
   return opaque()
