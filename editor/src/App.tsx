@@ -1,12 +1,15 @@
-import { useReducer } from 'react'
+import { useReducer, useRef } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
 import { openHtmlFile } from './file/fileAccess.ts'
+import { createIdGen } from './model/id.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
 import { SlidePanel } from './panels/SlidePanel.tsx'
+import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState } from './state/store.ts'
 
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
+  const idGenRef = useRef(createIdGen('n'))
 
   async function handleOpen() {
     let opened
@@ -37,6 +40,7 @@ export function App() {
         {state.opaqueCount > 0 && <span className="notice">편집 불가 요소 {state.opaqueCount}개 보존됨</span>}
         {state.loadError && <span className="error" role="alert">{state.loadError}</span>}
       </header>
+      <Toolbar state={state} dispatch={dispatch} idGen={idGenRef.current} />
       <aside className="side">
         {state.doc && (
           <SlidePanel
