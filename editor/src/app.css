@@ -22,7 +22,7 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .canvas-area { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .empty-state { color: #6b7280; font-size: 14px; }
 
-.slide-view { position: relative; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); flex: none; }
+.slide-view { position: relative; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); flex: none; font-family: var(--wd-font-body); color: var(--wd-text); }
 .slide-view .el-text p { margin: 0; }
 
 .thumb { display: block; width: 100%; border: 2px solid transparent; border-radius: 4px; padding: 2px; margin-bottom: 8px; background: none; cursor: pointer; text-align: left; }
