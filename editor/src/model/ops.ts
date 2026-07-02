@@ -1,0 +1,149 @@
+import type { DeckDoc, Frame, ImageElement, KnownElement, ShapeElement, Slide, SlideElement, TextElement } from './types.ts'
+import { isKnownElement } from './types.ts'
+
+// ---------- 내부 헬퍼 ----------
+
+function slideIndexOf(doc: DeckDoc, slideId: string): number {
+  const i = doc.slides.findIndex((s) => s.id === slideId)
+  if (i === -1) throw new Error(`슬라이드를 찾을 수 없습니다: ${slideId}`)
+  return i
+}
+
+function mapSlide(doc: DeckDoc, slideId: string, fn: (slide: Slide) => Slide): DeckDoc {
+  const i = slideIndexOf(doc, slideId)
+  const slides = doc.slides.slice()
+  slides[i] = fn(slides[i]!)
+  return { ...doc, slides }
+}
+
+function elementIndexOf(slide: Slide, elementId: string): number {
+  const i = slide.elements.findIndex((e) => e.id === elementId)
+  if (i === -1) throw new Error(`요소를 찾을 수 없습니다: ${elementId}`)
+  return i
+}
+
+function mapKnownElement(doc: DeckDoc, slideId: string, elementId: string, fn: (el: KnownElement) => KnownElement): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => {
+    const i = elementIndexOf(slide, elementId)
+    const el = slide.elements[i]!
+    if (!isKnownElement(el)) throw new Error(`편집할 수 없는 요소입니다 (보존된 원문 블록): ${elementId}`)
+    const elements = slide.elements.slice()
+    elements[i] = fn(el)
+    return { ...slide, elements }
+  })
+}
+
+// ---------- 요소 커맨드 ----------
+
+export function moveElement(doc: DeckDoc, slideId: string, elementId: string, dx: number, dy: number): DeckDoc {
+  return mapKnownElement(doc, slideId, elementId, (el) => ({
+    ...el,
+    frame: { ...el.frame, left: el.frame.left + dx, top: el.frame.top + dy },
+  }))
+}
+
+export function setElementFrame(doc: DeckDoc, slideId: string, elementId: string, frame: Frame): DeckDoc {
+  return mapKnownElement(doc, slideId, elementId, (el) => ({ ...el, frame: { ...frame } }))
+}
+
+export function setTextHtml(doc: DeckDoc, slideId: string, elementId: string, html: string): DeckDoc {
+  return mapKnownElement(doc, slideId, elementId, (el) => {
+    if (el.type !== 'text') throw new Error(`텍스트 요소가 아닙니다: ${elementId}`)
+    return { ...el, html }
+  })
+}
+
+export function addElement(doc: DeckDoc, slideId: string, element: SlideElement, index?: number): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => {
+    const elements = slide.elements.slice()
+    elements.splice(index ?? elements.length, 0, element)
+    return { ...slide, elements }
+  })
+}
+
+export function removeElement(doc: DeckDoc, slideId: string, elementId: string): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => {
+    const i = elementIndexOf(slide, elementId)
+    const elements = slide.elements.slice()
+    elements.splice(i, 1)
+    return { ...slide, elements }
+  })
+}
+
+export type ZDirection = 'forward' | 'backward' | 'front' | 'back'
+
+export function moveElementZ(doc: DeckDoc, slideId: string, elementId: string, dir: ZDirection): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => {
+    const i = elementIndexOf(slide, elementId)
+    const target = { forward: i + 1, backward: i - 1, front: slide.elements.length - 1, back: 0 }[dir]
+    const clamped = Math.max(0, Math.min(slide.elements.length - 1, target))
+    if (clamped === i) return slide
+    const elements = slide.elements.slice()
+    const [el] = elements.splice(i, 1)
+    elements.splice(clamped, 0, el!)
+    return { ...slide, elements }
+  })
+}
+
+// ---------- 슬라이드 커맨드 ----------
+
+export function addSlide(doc: DeckDoc, idGen: () => string, index?: number): DeckDoc {
+  const slide: Slide = { id: idGen(), bg: '#ffffff', elements: [] }
+  const slides = doc.slides.slice()
+  slides.splice(index ?? slides.length, 0, slide)
+  return { ...doc, slides }
+}
+
+export function removeSlide(doc: DeckDoc, slideId: string): DeckDoc {
+  if (doc.slides.length <= 1) throw new Error('마지막 슬라이드는 삭제할 수 없습니다')
+  const i = slideIndexOf(doc, slideId)
+  const slides = doc.slides.slice()
+  slides.splice(i, 1)
+  return { ...doc, slides }
+}
+
+export function duplicateSlide(doc: DeckDoc, slideId: string, idGen: () => string): DeckDoc {
+  const i = slideIndexOf(doc, slideId)
+  const src = doc.slides[i]!
+  const copy: Slide = {
+    id: idGen(),
+    bg: src.bg,
+    elements: src.elements.map((el) =>
+      el.type === 'opaque'
+        ? { ...el, id: idGen() }
+        : { ...structuredClone(el), id: idGen() },
+    ),
+  }
+  const slides = doc.slides.slice()
+  slides.splice(i + 1, 0, copy)
+  return { ...doc, slides }
+}
+
+export function moveSlide(doc: DeckDoc, fromIndex: number, toIndex: number): DeckDoc {
+  const max = doc.slides.length - 1
+  if (fromIndex < 0 || fromIndex > max || toIndex < 0 || toIndex > max) {
+    throw new Error(`슬라이드 위치가 범위를 벗어났습니다: ${fromIndex} → ${toIndex}`)
+  }
+  const slides = doc.slides.slice()
+  const [slide] = slides.splice(fromIndex, 1)
+  slides.splice(toIndex, 0, slide!)
+  return { ...doc, slides }
+}
+
+export function setSlideBg(doc: DeckDoc, slideId: string, bg: string | null): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => ({ ...slide, bg }))
+}
+
+// ---------- 팩토리 ----------
+
+export function createTextElement(idGen: () => string, frame: Frame, html: string): TextElement {
+  return { type: 'text', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, html }
+}
+
+export function createShapeElement(idGen: () => string, frame: Frame, background: string): ShapeElement {
+  return { type: 'shape', id: idGen(), frame: { ...frame }, extraStyle: { background }, extraAttrs: {}, shape: 'rect' }
+}
+
+export function createImageElement(idGen: () => string, frame: Frame, src: string, alt: string): ImageElement {
+  return { type: 'image', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, src, alt, imgStyle: 'width:100%; height:100%;' }
+}
