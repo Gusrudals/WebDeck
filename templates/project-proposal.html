@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head>
+<meta charset="utf-8">
+<title>신규 프로젝트 제안</title>
+<style>
+  :root {
+    --wd-primary: #1a56db;
+    --wd-accent: #e8f0fe;
+    --wd-text: #1f2937;
+    --wd-muted: #6b7280;
+    --wd-font-heading: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+    --wd-font-body: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e5e7eb; font-family: var(--wd-font-body); color: var(--wd-text); }
+  .deck { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; }
+  .slide {
+    position: relative; width: 1280px; height: 720px; flex: none;
+    background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
+  .el { position: absolute; }
+  .el-text p { margin: 0; }
+  @media print {
+    body { background: none; }
+    .deck { display: block; padding: 0; }
+    .slide { box-shadow: none; page-break-after: always; }
+  }
+  @page { size: 1280px 720px; margin: 0; }
+</style>
+</head>
+<body>
+<main class="deck" data-slide-width="1280" data-slide-height="720">
+
+  <!-- 1. 표지 (풀블리드) -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:1280px; height:720px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:96px; top:260px; width:1088px; height:140px;">
+      <p><strong><span style="font-size:54px; color:#ffffff;">신규 프로젝트 제안</span></strong></p>
+    </div>
+    <div class="el el-text" style="left:96px; top:420px; width:1088px; height:60px;">
+      <p><span style="font-size:24px; color:#dbeafe;">프로젝트명 · 제안 부서 · 2026. 07.</span></p>
+    </div>
+  </section>
+
+  <!-- 2. 문제 정의 -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:900px; height:80px;">
+      <p><strong><span style="font-size:36px;">문제 정의</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:200px; width:8px; height:120px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:128px; top:200px; width:1056px; height:120px;">
+      <p style="font-size:24px; margin-bottom:12px;"><strong>수작업 반복</strong></p>
+      <p style="font-size:20px; color:var(--wd-muted);">보고서 작성에 팀당 주 10시간 이상 소요</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:350px; width:8px; height:120px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:128px; top:350px; width:1056px; height:120px;">
+      <p style="font-size:24px; margin-bottom:12px;"><strong>포맷 비일관</strong></p>
+      <p style="font-size:20px; color:var(--wd-muted);">부서마다 다른 양식으로 취합 비용 증가</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:500px; width:8px; height:120px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:128px; top:500px; width:1056px; height:120px;">
+      <p style="font-size:24px; margin-bottom:12px;"><strong>데이터 단절</strong></p>
+      <p style="font-size:20px; color:var(--wd-muted);">원본 데이터와 보고서가 분리되어 최신성 유지 곤란</p>
+    </div>
+  </section>
+
+  <!-- 3. 제안 개요 (2단) -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:900px; height:80px;">
+      <p><strong><span style="font-size:36px;">제안 개요</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:200px; width:420px; height:120px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:120px; top:216px; width:372px; height:88px;">
+      <p style="font-size:22px; margin-bottom:8px;"><strong>1단계 · 표준화</strong></p>
+      <p style="font-size:18px; color:var(--wd-muted);">공통 문서 포맷 정의</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:350px; width:420px; height:120px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:120px; top:366px; width:372px; height:88px;">
+      <p style="font-size:22px; margin-bottom:8px;"><strong>2단계 · 자동화</strong></p>
+      <p style="font-size:18px; color:var(--wd-muted);">AI 초안 생성 파이프라인 구축</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:500px; width:420px; height:120px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:120px; top:516px; width:372px; height:88px;">
+      <p style="font-size:22px; margin-bottom:8px;"><strong>3단계 · 확산</strong></p>
+      <p style="font-size:18px; color:var(--wd-muted);">전사 교육 및 표준 정착</p>
+    </div>
+    <div class="el el-text" style="left:600px; top:200px; width:584px; height:440px;">
+      <p style="font-size:22px; margin-bottom:16px;"><strong>기대 효과</strong></p>
+      <p style="font-size:20px; margin-bottom:12px;">• 보고서 작성 시간 70% 단축</p>
+      <p style="font-size:20px; margin-bottom:12px;">• 전사 문서 양식 일원화</p>
+      <p style="font-size:20px; margin-bottom:12px;">• 데이터 기반 의사결정 가속</p>
+      <p style="font-size:20px;">• 편집 가능한 산출물로 후속 협업 지원</p>
+    </div>
+  </section>
+
+  <!-- 4. 추진 로드맵 -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:900px; height:80px;">
+      <p><strong><span style="font-size:36px;">추진 로드맵</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:260px; width:344px; height:140px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:96px; top:310px; width:344px; height:60px;">
+      <p style="font-size:24px; text-align:center;"><strong>1단계 (7~8월)</strong></p>
+    </div>
+    <div class="el el-text" style="left:96px; top:430px; width:344px; height:120px;">
+      <p style="font-size:18px; text-align:center; color:var(--wd-muted);">포맷 정의 및 파일럿</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:468px; top:260px; width:344px; height:140px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:468px; top:310px; width:344px; height:60px;">
+      <p style="font-size:24px; text-align:center;"><strong>2단계 (9~10월)</strong></p>
+    </div>
+    <div class="el el-text" style="left:468px; top:430px; width:344px; height:120px;">
+      <p style="font-size:18px; text-align:center; color:var(--wd-muted);">부서 확산 및 교육</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:840px; top:260px; width:344px; height:140px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:840px; top:310px; width:344px; height:60px;">
+      <p style="font-size:24px; text-align:center;"><strong>3단계 (11~12월)</strong></p>
+    </div>
+    <div class="el el-text" style="left:840px; top:430px; width:344px; height:120px;">
+      <p style="font-size:18px; text-align:center; color:var(--wd-muted);">전사 표준 정착</p>
+    </div>
+  </section>
+
+</main>
+<script>
+  (function () {
+    document.querySelectorAll('.slide').forEach(function (slide) {
+      if (slide.dataset.bg) slide.style.background = slide.dataset.bg;
+    });
+    var deck = document.querySelector('.deck');
+    var slideWidth = Number(deck.dataset.slideWidth) || 1280;
+    function fit() {
+      deck.style.zoom = Math.min(1, (window.innerWidth - 48) / slideWidth);
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('beforeprint', function () { deck.style.zoom = 1; });
+    window.addEventListener('afterprint', fit);
+    fit();
+  })();
+</script>
+</body>
+</html>
