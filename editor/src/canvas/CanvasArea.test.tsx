@@ -36,6 +36,25 @@ test('Shift+클릭은 토글을 dispatch한다', () => {
   expect(dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_SELECT', id: EL_TEXT })
 })
 
+test('이미 선택된 요소 클릭은 선택을 유지한다', () => {
+  const { dispatch, getByText } = renderCanvas([EL_TEXT])
+  fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
+  // 선택 관련 액션이 하나도 dispatch되지 않아야 한다 (다중 드래그 준비를 위한 선택 유지)
+  const types = dispatch.mock.calls.map(([action]) => (action as { type: string }).type)
+  expect(types).not.toContain('SELECT_ELEMENTS')
+  expect(types).not.toContain('TOGGLE_SELECT')
+  expect(types).not.toContain('CLEAR_SELECTION')
+})
+
+test('텍스트 편집 중에는 요소 클릭이 선택을 바꾸지 않는다', () => {
+  const dispatch = vi.fn()
+  const { container } = render(
+    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} />,
+  )
+  fireEvent.pointerDown(container.querySelector('.el-shape')!, { clientX: 310, clientY: 310 })
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
 test('빈 영역 클릭은 선택을 해제한다', () => {
   const { dispatch, container } = renderCanvas([EL_TEXT])
   fireEvent.pointerDown(container.querySelector('.slide-view')!)
