@@ -39,7 +39,7 @@ test('문서를 열면 캔버스·패널·opaque 배지가 나타난다', async 
   // 캔버스와 썸네일 양쪽에 나타나므로 findAllByText 사용 (findByText는 다중 매치로 throw)
   expect((await screen.findAllByText('첫 슬라이드 제목')).length).toBeGreaterThanOrEqual(1)
   expect(screen.getByText('report.html')).toBeTruthy()
-  expect(screen.getAllByRole('button', { name: /^슬라이드 / })).toHaveLength(2)
+  expect(screen.getAllByRole('button', { name: /^슬라이드 \d/ })).toHaveLength(2)
   expect(screen.getByText('편집 불가 요소 1개 보존됨')).toBeTruthy()
 })
 

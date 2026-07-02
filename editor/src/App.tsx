@@ -4,6 +4,7 @@ import { openHtmlFile } from './file/fileAccess.ts'
 import { createIdGen } from './model/id.ts'
 import { canRedo, canUndo } from './model/history.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
+import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts'
 import { SlidePanel } from './panels/SlidePanel.tsx'
 import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState } from './state/store.ts'
@@ -52,6 +53,26 @@ export function App() {
             doc={state.doc}
             currentIndex={state.currentSlideIndex}
             onSelect={(index) => dispatch({ type: 'SELECT_SLIDE', index })}
+            canRemove={state.doc.slides.length > 1}
+            onAdd={() => {
+              dispatch({ type: 'APPLY_DOC', doc: addSlide(state.doc!, idGenRef.current, state.currentSlideIndex + 1) })
+              dispatch({ type: 'SELECT_SLIDE', index: state.currentSlideIndex + 1 })
+            }}
+            onDuplicate={() => {
+              const slide = state.doc!.slides[state.currentSlideIndex]
+              if (!slide) return
+              dispatch({ type: 'APPLY_DOC', doc: duplicateSlide(state.doc!, slide.id, idGenRef.current) })
+              dispatch({ type: 'SELECT_SLIDE', index: state.currentSlideIndex + 1 })
+            }}
+            onRemove={() => {
+              const slide = state.doc!.slides[state.currentSlideIndex]
+              if (!slide || state.doc!.slides.length <= 1) return
+              dispatch({ type: 'APPLY_DOC', doc: removeSlide(state.doc!, slide.id) })
+            }}
+            onReorder={(from, to) => {
+              dispatch({ type: 'APPLY_DOC', doc: moveSlide(state.doc!, from, to) })
+              dispatch({ type: 'SELECT_SLIDE', index: to })
+            }}
           />
         )}
       </aside>
