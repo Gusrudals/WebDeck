@@ -1,17 +1,29 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { SlideElement } from '../model/types.ts'
 import { cssTextToReact, styleFromModel } from './styleFromModel.ts'
+import { TextEditable } from './TextEditable.tsx'
 
 export interface ElementInteraction {
   selected: boolean
   editing: boolean
   onPointerDown: (e: ReactPointerEvent) => void
+  onDoubleClick: () => void
+  onTextCommit: (html: string) => void
 }
 
 export function ElementView({ element, interaction }: { element: SlideElement; interaction?: ElementInteraction }) {
-  const handlers = interaction ? { onPointerDown: interaction.onPointerDown } : {}
+  const handlers = interaction
+    ? { onPointerDown: interaction.onPointerDown, onDoubleClick: interaction.onDoubleClick }
+    : {}
   switch (element.type) {
-    case 'text':
+    case 'text': {
+      if (interaction?.editing) {
+        return (
+          <div className="el el-text editing" style={styleFromModel(element.frame, element.extraStyle)}>
+            <TextEditable html={element.html} onCommit={interaction.onTextCommit} />
+          </div>
+        )
+      }
       return (
         <div
           className="el el-text"
@@ -20,6 +32,7 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
           {...handlers}
         />
       )
+    }
     case 'image':
       return (
         <div className="el el-image" style={styleFromModel(element.frame, element.extraStyle)} {...handlers}>

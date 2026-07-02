@@ -6,6 +6,8 @@ export interface SlideInteraction {
   selectedIds: string[]
   editingTextId: string | null
   onElementPointerDown: (e: ReactPointerEvent, id: string) => void
+  onElementDoubleClick: (id: string) => void
+  onTextCommit: (id: string, html: string) => void
 }
 
 export function SlideView({
@@ -36,6 +38,8 @@ export function SlideView({
                   selected: interaction.selectedIds.includes(el.id),
                   editing: interaction.editingTextId === el.id,
                   onPointerDown: (e) => interaction.onElementPointerDown(e, el.id),
+                  onDoubleClick: () => interaction.onElementDoubleClick(el.id),
+                  onTextCommit: (html) => interaction.onTextCommit(el.id, html),
                 }
               : undefined
           }

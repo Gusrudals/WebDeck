@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
-import { moveElement, setElementFrame } from '../model/ops.ts'
+import { moveElement, setElementFrame, setTextHtml } from '../model/ops.ts'
 import type { DeckDoc, Frame } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction } from '../state/store.ts'
@@ -175,12 +175,31 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     beginMove(e, ids)
   }
 
+  const onElementDoubleClick = (id: string) => {
+    const el = slide.elements.filter(isKnownElement).find((k) => k.id === id)
+    if (el?.type === 'text') dispatch({ type: 'START_TEXT_EDIT', id })
+  }
+
+  const onTextCommit = (id: string, html: string) => {
+    const el = slide.elements.filter(isKnownElement).find((k) => k.id === id)
+    if (el?.type === 'text' && el.html !== html) {
+      dispatch({ type: 'APPLY_DOC', doc: setTextHtml(doc, slide.id, id, html) })
+    }
+    dispatch({ type: 'END_TEXT_EDIT' })
+  }
+
   const previewSlide = previewDoc.slides[slideIndex] ?? slide
   const themeVars = extractThemeVars(doc.headExtra)
   const singleSelected =
     selectedIds.length === 1 ? slide.elements.filter(isKnownElement).find((el) => el.id === selectedIds[0]) : undefined
   return (
-    <main className="canvas-area" ref={ref} onPointerDown={() => dispatch({ type: 'CLEAR_SELECTION' })}>
+    <main
+      className="canvas-area"
+      ref={ref}
+      onPointerDown={() => {
+        if (!editingTextId) dispatch({ type: 'CLEAR_SELECTION' })
+      }}
+    >
       <div style={{ width: doc.slideWidth * scale, height: doc.slideHeight * scale }}>
         <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
           <div className="slide-stage" style={{ position: 'relative', width: doc.slideWidth, height: doc.slideHeight }}>
@@ -189,7 +208,7 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
               width={doc.slideWidth}
               height={doc.slideHeight}
               themeVars={themeVars}
-              interaction={{ selectedIds, editingTextId, onElementPointerDown }}
+              interaction={{ selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit }}
             />
             <SelectionOverlay
               slide={previewSlide}

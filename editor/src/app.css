@@ -42,3 +42,7 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .handle-ne, .handle-sw { cursor: nesw-resize; }
 .handle-n, .handle-s { cursor: ns-resize; }
 .handle-e, .handle-w { cursor: ew-resize; }
+
+.el-text.editing { outline: 2px dashed var(--wd-primary); cursor: text; }
+.text-editable { width: 100%; height: 100%; outline: none; user-select: text; cursor: text; }
+.text-editable p { margin: 0; }

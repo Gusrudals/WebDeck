@@ -169,3 +169,53 @@ test('이동 중 pointercancel은 커밋 없이 리스너를 해제한다', () =
   fireEvent.pointerUp(window)
   expect(dispatch).not.toHaveBeenCalled()
 })
+
+test('텍스트 요소 더블클릭은 편집 시작을 dispatch한다', () => {
+  const { dispatch, getByText } = renderCanvas([EL_TEXT])
+  fireEvent.doubleClick(getByText('제목'))
+  expect(dispatch).toHaveBeenCalledWith({ type: 'START_TEXT_EDIT', id: EL_TEXT })
+})
+
+test('도형 더블클릭은 편집을 시작하지 않는다', () => {
+  const { dispatch, container } = renderCanvas([EL_SHAPE])
+  fireEvent.doubleClick(container.querySelector('.el-shape')!)
+  expect(dispatch.mock.calls.map(([a]) => a).some((a) => a?.type === 'START_TEXT_EDIT')).toBe(false)
+})
+
+function renderEditing() {
+  const dispatch = vi.fn()
+  const utils = render(
+    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} />,
+  )
+  const editable = utils.container.querySelector('.text-editable') as HTMLElement
+  return { dispatch, editable, ...utils }
+}
+
+test('편집 중에는 contentEditable이 뜨고 blur에 변경을 커밋한다', () => {
+  const { dispatch, editable } = renderEditing()
+  expect(editable).toBeTruthy()
+  expect(editable.innerHTML).toContain('제목')
+  editable.innerHTML = '<p>고친 제목</p>'
+  fireEvent.blur(editable)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type).toBe('text')
+  if (el.type === 'text') expect(el.html).toBe('<p>고친 제목</p>')
+  expect(dispatch).toHaveBeenCalledWith({ type: 'END_TEXT_EDIT' })
+})
+
+test('내용이 같으면 blur에 커밋 없이 편집만 끝낸다', () => {
+  const { dispatch, editable } = renderEditing()
+  fireEvent.blur(editable)
+  expect(appliedDoc(dispatch)).toBeNull()
+  expect(dispatch).toHaveBeenCalledWith({ type: 'END_TEXT_EDIT' })
+})
+
+test('Escape는 커밋하고 편집을 끝낸다', () => {
+  const { dispatch, editable } = renderEditing()
+  editable.innerHTML = '<p>ESC</p>'
+  fireEvent.keyDown(editable, { key: 'Escape' })
+  const el = appliedDoc(dispatch)!.slides[0]!.elements[0]!
+  if (el.type === 'text') expect(el.html).toBe('<p>ESC</p>')
+  expect(dispatch).toHaveBeenCalledWith({ type: 'END_TEXT_EDIT' })
+})
