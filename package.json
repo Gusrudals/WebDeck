@@ -2,7 +2,7 @@
   "name": "webdeck",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22" },
   "scripts": {
     "test": "node --test 'tools/**/*.test.mjs'",
     "validate": "node tools/validate-webdeck.mjs"

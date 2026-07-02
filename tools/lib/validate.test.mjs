@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { validateWebdeck, parseInlineStyle } from './validate.mjs'
-import { makeDoc } from './test-helpers.mjs'
+import { makeDoc } from './helpers.mjs'
 
 test('유효한 문서는 오류와 경고가 없다', () => {
   const { errors, warnings } = validateWebdeck(makeDoc())
@@ -74,6 +74,14 @@ test('외부 스크립트는 오류', () => {
   const doc = makeDoc({ extraHead: '<script src="https://cdn.example.com/x.js"></script>' })
   const { errors } = validateWebdeck(doc)
   assert.ok(errors.some((e) => e.includes('script')))
+})
+
+test('대소문자/다중 토큰 rel의 외부 스타일시트도 오류', () => {
+  for (const rel of ['STYLESHEET', 'Stylesheet', 'stylesheet preload']) {
+    const doc = makeDoc({ extraHead: `<link rel="${rel}" href="https://cdn.example.com/x.css">` })
+    const { errors } = validateWebdeck(doc)
+    assert.ok(errors.some((e) => e.includes('스타일시트')), `rel="${rel}"가 통과함`)
+  }
 })
 
 test('parseInlineStyle은 선언을 소문자 속성 맵으로 파싱한다', () => {

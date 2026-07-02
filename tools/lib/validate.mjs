@@ -42,7 +42,11 @@ export function validateWebdeck(html) {
   if (root.querySelector('script[src]')) {
     errors.push('문서: 외부 <script src="...">는 허용되지 않습니다 (자기완결형 원칙)')
   }
-  if (root.querySelector('link[rel="stylesheet"]')) {
+  const links = root.querySelectorAll('link')
+  const hasExternalStylesheet = links.some((l) =>
+    (l.getAttribute('rel') || '').toLowerCase().split(/\s+/).includes('stylesheet'),
+  )
+  if (hasExternalStylesheet) {
     errors.push('문서: 외부 스타일시트 <link>는 허용되지 않습니다 (자기완결형 원칙)')
   }
 

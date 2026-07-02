@@ -5,7 +5,7 @@ import { writeFileSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { makeDoc } from './lib/test-helpers.mjs'
+import { makeDoc } from './lib/helpers.mjs'
 
 const CLI = fileURLToPath(new URL('./validate-webdeck.mjs', import.meta.url))
 const dir = mkdtempSync(join(tmpdir(), 'webdeck-'))
