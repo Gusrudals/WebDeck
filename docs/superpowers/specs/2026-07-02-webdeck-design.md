@@ -91,7 +91,7 @@ PPT의 문서 모델을 HTML로 1:1 대응시킨다.
 - **텍스트 서식 (v1)**: 굵게/기울임/밑줄, 글자 크기, 글자 색, 정렬(좌/중/우) — `<strong>`, `<em>`, `<u>`, span 인라인 스타일로 표현
 - **테마 = CSS 변수**: 색상·폰트를 `:root`의 `--wd-*` 변수로 중앙화 (`--wd-primary`, `--wd-accent`, `--wd-text`, `--wd-font-body`, `--wd-font-heading` 등). 브랜드 테마 적용이 한 곳 수정으로 가능
 - **이미지는 data URI 내장**: PPT처럼 단일 파일 유통 보장
-- **뷰어 내장**: 인라인 CSS로 슬라이드를 세로 나열, 인라인 JS(수십 줄)로 뷰포트 폭에 맞춰 transform scale. print CSS로 슬라이드 1장 = PDF 1페이지 (브라우저 인쇄 → PDF 내보내기)
+- **뷰어 내장**: 인라인 CSS로 슬라이드를 세로 나열, 인라인 JS(수십 줄)로 뷰포트 폭에 맞춰 CSS `zoom` 축소(레이아웃에 반영되어 여백이 남지 않음 — 구현 과정에서 transform scale 대신 채택). print CSS로 슬라이드 1장 = PDF 1페이지 (브라우저 인쇄 → PDF 내보내기)
 - **버전 명시**: `data-webdeck-version="1"` — 포맷 진화 시 하위 호환 처리 근거
 
 ## 6. 에디터 앱
