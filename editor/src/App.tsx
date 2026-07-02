@@ -2,14 +2,17 @@ import { useReducer, useRef } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
 import { openHtmlFile } from './file/fileAccess.ts'
 import { createIdGen } from './model/id.ts'
+import { canRedo, canUndo } from './model/history.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
 import { SlidePanel } from './panels/SlidePanel.tsx'
 import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState } from './state/store.ts'
+import { useShortcuts } from './hooks/useShortcuts.ts'
 
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
   const idGenRef = useRef(createIdGen('n'))
+  useShortcuts(state, dispatch, idGenRef.current)
 
   async function handleOpen() {
     let opened
@@ -36,6 +39,8 @@ export function App() {
       <header className="topbar">
         <h1>WebDeck 에디터</h1>
         <button type="button" onClick={handleOpen}>열기</button>
+        <button type="button" disabled={!state.history || !canUndo(state.history)} onClick={() => dispatch({ type: 'UNDO' })}>실행 취소</button>
+        <button type="button" disabled={!state.history || !canRedo(state.history)} onClick={() => dispatch({ type: 'REDO' })}>다시 실행</button>
         {state.fileName && <span className="file-name">{state.fileName}</span>}
         {state.opaqueCount > 0 && <span className="notice">편집 불가 요소 {state.opaqueCount}개 보존됨</span>}
         {state.loadError && <span className="error" role="alert">{state.loadError}</span>}
