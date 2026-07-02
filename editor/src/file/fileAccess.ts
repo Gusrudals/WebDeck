@@ -63,5 +63,6 @@ export function downloadHtml(fileName: string, html: string): void {
   a.href = url
   a.download = fileName
   a.click()
-  URL.revokeObjectURL(url)
+  // 일부 브라우저는 click 직후 동기 revoke 시 다운로드가 시작되기 전에 URL이 무효화된다
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

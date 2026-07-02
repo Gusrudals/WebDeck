@@ -66,7 +66,7 @@ function withDoc(state: EditorState, doc: DeckDoc, history: History, select?: st
   const alive = new Set(doc.slides[index]?.elements.map((e) => e.id) ?? [])
   const selectedIds = (select ?? state.selectedIds).filter((id) => alive.has(id))
   const editingTextId = state.editingTextId !== null && alive.has(state.editingTextId) ? state.editingTextId : null
-  return { ...state, doc, history, currentSlideIndex: index, opaqueCount: countOpaque(doc), selectedIds, editingTextId }
+  return { ...state, doc, history, currentSlideIndex: index, opaqueCount: countOpaque(doc), selectedIds, editingTextId, saveError: null }
 }
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {

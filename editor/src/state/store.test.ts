@@ -147,4 +147,13 @@ describe('편집 상태', () => {
     s = editorReducer(s, { type: 'SAVE_ERROR', message: '실패' })
     expect(s.saveError).toBe('실패')
   })
+
+  test('SAVE_ERROR 후 APPLY_DOC하면 saveError가 지워진다', () => {
+    const s0 = opened()
+    const elId = s0.doc!.slides[0]!.elements[0]!.id
+    let s = editorReducer(s0, { type: 'SAVE_ERROR', message: '실패' })
+    expect(s.saveError).toBe('실패')
+    s = editorReducer(s, { type: 'APPLY_DOC', doc: moveElement(s.doc!, s.doc!.slides[0]!.id, elId, 1, 1) })
+    expect(s.saveError).toBeNull()
+  })
 })

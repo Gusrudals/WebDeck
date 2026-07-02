@@ -23,7 +23,7 @@ function fixture(): DeckDoc {
     id: gen(), // wd-1
     bg: '#ffffff',
     extraAttrs: {},
-    extraClasses: [],
+    extraClasses: ['intro'],
     elements: [
       { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, extraStyle: {}, extraAttrs: {}, extraClasses: [], shape: 'rect' }, // wd-2
       { type: 'text', id: gen(), frame: { left: 10, top: 60, width: 200, height: 80 }, extraStyle: {}, extraAttrs: {}, extraClasses: [], html: '<p>a</p>' }, // wd-3
@@ -92,6 +92,8 @@ describe('슬라이드 커맨드', () => {
     expect(next.slides[1]!.elements.map((e) => e.id)).toEqual(['c-2', 'c-3', 'c-4'])
     expect(next.slides[1]!.elements[1]).toMatchObject({ type: 'text', html: '<p>a</p>' })
     expect(next.slides[1]!.elements[1]).not.toBe(doc.slides[0]!.elements[1])
+    expect(next.slides[1]!.extraClasses).toEqual(['intro'])
+    expect(next.slides[1]!.extraClasses).not.toBe(doc.slides[0]!.extraClasses)
   })
 
   test('removeSlide / moveSlide / setSlideBg', () => {

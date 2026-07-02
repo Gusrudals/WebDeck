@@ -89,6 +89,20 @@ test('저장은 검증 통과 후 FSA 핸들에 쓴다', async () => {
   expect(written[0]).toContain('첫 슬라이드 제목')
 })
 
+test('핸들에 createWritable이 없으면 다운로드로 저장하고 dirty를 해제한다', async () => {
+  stubFilePicker('report.html', VALID_DOC)
+  URL.createObjectURL = vi.fn(() => 'blob:x')
+  URL.revokeObjectURL = vi.fn()
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '슬라이드 복제' }))
+  expect(screen.getByTitle('저장되지 않은 변경')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: '저장' }))
+  await vi.waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled())
+  expect(screen.queryByTitle('저장되지 않은 변경')).toBeNull()
+})
+
 test('쓰기 실패 시 오류와 다운로드 폴백을 제안한다', async () => {
   const handle = {
     getFile: () => Promise.resolve({ name: 'r.html', text: () => Promise.resolve(VALID_DOC) }),

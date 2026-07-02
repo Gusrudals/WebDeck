@@ -106,4 +106,14 @@ describe('왕복 보존 강화', () => {
     expect(m.deckExtraAttrs).toEqual({})
     expect(m.slides[0]!.extraClasses).toEqual([])
   })
+
+  test('class 토큰에 따옴표가 있어도 직렬화가 깨지지 않고 보존된다', () => {
+    // DOMParser는 class="slide a&quot;b"를 slide / a"b 두 토큰으로 읽는다
+    const html = doc(`<section class="slide a&quot;b"><div class="el el-text" style="left:0px; top:0px; width:100px; height:50px;"><p>a</p></div></section>`)
+    const m = parseWebdeck(html)
+    expect(m.slides[0]!.extraClasses).toEqual(['a"b'])
+    const out = serializeWebdeck(m)
+    expect(out).toContain('class="slide a&quot;b"')
+    expect(parseWebdeck(out)).toEqual(m)
+  })
 })
