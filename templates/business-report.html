@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head>
+<meta charset="utf-8">
+<title>2026년 상반기 업무 보고</title>
+<style>
+  :root {
+    --wd-primary: #1a56db;
+    --wd-accent: #e8f0fe;
+    --wd-text: #1f2937;
+    --wd-muted: #6b7280;
+    --wd-font-heading: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+    --wd-font-body: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e5e7eb; font-family: var(--wd-font-body); color: var(--wd-text); }
+  .deck { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; }
+  .slide {
+    position: relative; width: 1280px; height: 720px; flex: none;
+    background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
+  .el { position: absolute; }
+  .el-text p { margin: 0; }
+  @media print {
+    body { background: none; }
+    .deck { display: block; padding: 0; }
+    .slide { box-shadow: none; page-break-after: always; }
+  }
+  @page { size: 1280px 720px; margin: 0; }
+</style>
+</head>
+<body>
+<main class="deck" data-slide-width="1280" data-slide-height="720">
+
+  <!-- 1. 표지 -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:1280px; height:12px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:96px; top:240px; width:1088px; height:140px;">
+      <p><strong><span style="font-size:54px;">2026년 상반기 업무 보고</span></strong></p>
+    </div>
+    <div class="el el-text" style="left:96px; top:400px; width:1088px; height:60px;">
+      <p><span style="font-size:24px; color:var(--wd-muted);">경영기획팀 · 2026. 07. 02.</span></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:0px; top:600px; width:1280px; height:120px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:96px; top:644px; width:600px; height:40px;">
+      <p><span style="font-size:18px; color:var(--wd-muted);">WebDeck — AI 생성 · 사람 편집 HTML 보고서</span></p>
+    </div>
+  </section>
+
+  <!-- 2. 목차 -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:400px; height:80px;">
+      <p><strong><span style="font-size:36px;">목차</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:96px; top:200px; width:1088px; height:400px;">
+      <p style="font-size:26px; margin-bottom:20px;">1. 상반기 주요 성과</p>
+      <p style="font-size:26px; margin-bottom:20px;">2. 핵심 지표 현황</p>
+      <p style="font-size:26px; margin-bottom:20px;">3. 하반기 계획</p>
+      <p style="font-size:26px;">4. 요청 사항</p>
+    </div>
+  </section>
+
+  <!-- 3. 본문 2단 -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:900px; height:80px;">
+      <p><strong><span style="font-size:36px;">1. 상반기 주요 성과</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:96px; top:200px; width:520px; height:440px;">
+      <p style="font-size:22px; margin-bottom:16px;">• 신규 고객 12개사 확보</p>
+      <p style="font-size:22px; margin-bottom:16px;">• 주요 프로젝트 3건 완료</p>
+      <p style="font-size:22px; margin-bottom:16px;">• 고객 만족도 4.6/5.0 달성</p>
+      <p style="font-size:22px;">• 운영 비용 8% 절감</p>
+    </div>
+    <div class="el el-image" style="left:664px; top:200px; width:520px; height:440px;">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='440'%3E%3Crect width='520' height='440' fill='%23e8f0fe'/%3E%3Ctext x='260' y='226' text-anchor='middle' font-family='sans-serif' font-size='22' fill='%236b7280'%3EIMAGE%3C/text%3E%3C/svg%3E" alt="성과 차트 자리" style="width:100%; height:100%;">
+    </div>
+  </section>
+
+  <!-- 4. 요약 카드 3열 -->
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:900px; height:80px;">
+      <p><strong><span style="font-size:36px;">하반기 계획 요약</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:220px; width:344px; height:300px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:120px; top:252px; width:296px; height:236px;">
+      <p style="font-size:24px; margin-bottom:16px;"><strong>고객 확대</strong></p>
+      <p style="font-size:18px; color:var(--wd-muted);">신규 시장 진출 및 파트너십 확대</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:468px; top:220px; width:344px; height:300px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:492px; top:252px; width:296px; height:236px;">
+      <p style="font-size:24px; margin-bottom:16px;"><strong>제품 고도화</strong></p>
+      <p style="font-size:18px; color:var(--wd-muted);">핵심 기능 개선과 품질 안정화</p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:840px; top:220px; width:344px; height:300px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:864px; top:252px; width:296px; height:236px;">
+      <p style="font-size:24px; margin-bottom:16px;"><strong>운영 효율화</strong></p>
+      <p style="font-size:18px; color:var(--wd-muted);">프로세스 자동화로 비용 절감</p>
+    </div>
+  </section>
+
+</main>
+<script>
+  (function () {
+    document.querySelectorAll('.slide').forEach(function (slide) {
+      if (slide.dataset.bg) slide.style.background = slide.dataset.bg;
+    });
+    var deck = document.querySelector('.deck');
+    var slideWidth = Number(deck.dataset.slideWidth) || 1280;
+    function fit() {
+      deck.style.zoom = Math.min(1, (window.innerWidth - 48) / slideWidth);
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('beforeprint', function () { deck.style.zoom = 1; });
+    window.addEventListener('afterprint', fit);
+    fit();
+  })();
+</script>
+</body>
+</html>
