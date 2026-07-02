@@ -36,3 +36,9 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .snap-guide { position: absolute; background: #f59e0b; z-index: 10; }
 .snap-guide-x { top: 0; bottom: 0; width: 1px; }
 .snap-guide-y { left: 0; right: 0; height: 1px; }
+
+.handle { position: absolute; width: 8px; height: 8px; background: #fff; border: 1.5px solid var(--wd-primary); border-radius: 1px; transform: translate(-50%, -50%); pointer-events: auto; }
+.handle-nw, .handle-se { cursor: nwse-resize; }
+.handle-ne, .handle-sw { cursor: nesw-resize; }
+.handle-n, .handle-s { cursor: ns-resize; }
+.handle-e, .handle-w { cursor: ew-resize; }

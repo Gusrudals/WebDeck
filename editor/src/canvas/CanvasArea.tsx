@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
-import { moveElement } from '../model/ops.ts'
+import { moveElement, setElementFrame } from '../model/ops.ts'
 import type { DeckDoc, Frame } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction } from '../state/store.ts'
-import { buildSnapTargets, snapMove } from './geometry.ts'
-import type { Guide, SnapTargets } from './geometry.ts'
+import { buildSnapTargets, resizeFrame, snapMove } from './geometry.ts'
+import type { Guide, ResizeHandle, SnapTargets } from './geometry.ts'
 import { SelectionOverlay } from './SelectionOverlay.tsx'
 import { SlideView } from './SlideView.tsx'
 import { extractThemeVars } from './styleFromModel.ts'
@@ -23,6 +23,16 @@ interface MoveGesture {
   moved: boolean
 }
 
+interface ResizeGesture {
+  kind: 'resize'
+  slideId: string
+  id: string
+  frame: Frame
+  resized: boolean
+}
+
+type Gesture = MoveGesture | ResizeGesture
+
 export interface CanvasAreaProps {
   doc: DeckDoc
   slideIndex: number
@@ -36,7 +46,7 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
   const [scale, setScale] = useState(1)
   const scaleRef = useRef(1)
   scaleRef.current = scale
-  const [gesture, setGesture] = useState<MoveGesture | null>(null)
+  const [gesture, setGesture] = useState<Gesture | null>(null)
 
   useEffect(() => {
     function fit() {
@@ -52,10 +62,15 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
   }, [doc.slideWidth, doc.slideHeight])
 
   const previewDoc = useMemo(() => {
-    if (!gesture || !gesture.moved) return doc
-    let d = doc
-    for (const id of gesture.ids) d = moveElement(d, gesture.slideId, id, gesture.dx, gesture.dy)
-    return d
+    if (!gesture) return doc
+    if (gesture.kind === 'move') {
+      if (!gesture.moved) return doc
+      let d = doc
+      for (const id of gesture.ids) d = moveElement(d, gesture.slideId, id, gesture.dx, gesture.dy)
+      return d
+    }
+    if (!gesture.resized) return doc
+    return setElementFrame(doc, gesture.slideId, gesture.id, gesture.frame)
   }, [doc, gesture])
 
   const slide = doc.slides[slideIndex]
@@ -92,6 +107,7 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     const onUp = () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
       if (g.moved) {
         let d = docAtStart
         for (const id of g.ids) d = moveElement(d, g.slideId, id, g.dx, g.dy)
@@ -99,8 +115,50 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
       }
       setGesture(null)
     }
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      setGesture(null)
+    }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }
+
+  const beginResize = (e: ReactPointerEvent, handle: ResizeHandle) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const el = slide.elements.filter(isKnownElement).find((k) => k.id === selectedIds[0])
+    if (!el) return
+    const startX = e.clientX
+    const startY = e.clientY
+    const orig = el.frame
+    const docAtStart = doc
+    const g: ResizeGesture = { kind: 'resize', slideId: slide.id, id: el.id, frame: orig, resized: false }
+    const onMove = (ev: PointerEvent) => {
+      const dx = (ev.clientX - startX) / scaleRef.current
+      const dy = (ev.clientY - startY) / scaleRef.current
+      g.frame = resizeFrame(orig, handle, dx, dy)
+      g.resized = true
+      setGesture({ ...g })
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      if (g.resized) dispatch({ type: 'APPLY_DOC', doc: setElementFrame(docAtStart, g.slideId, g.id, g.frame) })
+      setGesture(null)
+    }
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      setGesture(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
   }
 
   const onElementPointerDown = (e: ReactPointerEvent, id: string) => {
@@ -119,6 +177,8 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
 
   const previewSlide = previewDoc.slides[slideIndex] ?? slide
   const themeVars = extractThemeVars(doc.headExtra)
+  const singleSelected =
+    selectedIds.length === 1 ? slide.elements.filter(isKnownElement).find((el) => el.id === selectedIds[0]) : undefined
   return (
     <main className="canvas-area" ref={ref} onPointerDown={() => dispatch({ type: 'CLEAR_SELECTION' })}>
       <div style={{ width: doc.slideWidth * scale, height: doc.slideHeight * scale }}>
@@ -131,7 +191,16 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
               themeVars={themeVars}
               interaction={{ selectedIds, editingTextId, onElementPointerDown }}
             />
-            <SelectionOverlay slide={previewSlide} selectedIds={selectedIds} guides={gesture?.guides ?? []} />
+            <SelectionOverlay
+              slide={previewSlide}
+              selectedIds={selectedIds}
+              guides={gesture?.kind === 'move' ? gesture.guides : []}
+              resize={
+                singleSelected && editingTextId !== singleSelected.id
+                  ? { elementId: singleSelected.id, onHandlePointerDown: beginResize }
+                  : undefined
+              }
+            />
           </div>
         </div>
       </div>

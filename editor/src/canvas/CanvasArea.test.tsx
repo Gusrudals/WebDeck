@@ -41,6 +41,7 @@ test('요소 클릭은 단일 선택을 dispatch한다', () => {
   const { dispatch, getByText } = renderCanvas()
   fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
   expect(dispatch).toHaveBeenCalledWith({ type: 'SELECT_ELEMENTS', ids: [EL_TEXT] })
+  fireEvent.pointerUp(window)
 })
 
 test('Shift+클릭은 토글을 dispatch한다', () => {
@@ -57,6 +58,7 @@ test('이미 선택된 요소 클릭은 선택을 유지한다', () => {
   expect(types).not.toContain('SELECT_ELEMENTS')
   expect(types).not.toContain('TOGGLE_SELECT')
   expect(types).not.toContain('CLEAR_SELECTION')
+  fireEvent.pointerUp(window)
 })
 
 test('텍스트 편집 중에는 요소 클릭이 선택을 바꾸지 않는다', () => {
@@ -124,4 +126,46 @@ test('다중 선택 드래그는 모두 함께 이동한다 (스냅 없음)', ()
   const doc = appliedDoc(dispatch)!
   expect(doc.slides[0]!.elements[0]!).toMatchObject({ frame: { left: 50, top: 20 } })
   expect(doc.slides[0]!.elements[1]!).toMatchObject({ frame: { left: 350, top: 320 } })
+})
+
+test('단일 선택이면 8개 리사이즈 핸들이 보인다', () => {
+  const { container } = renderCanvas([EL_SHAPE])
+  expect(container.querySelectorAll('.handle')).toHaveLength(8)
+})
+
+test('다중 선택이면 핸들이 없다', () => {
+  const { container } = renderCanvas([EL_TEXT, EL_SHAPE])
+  expect(container.querySelectorAll('.handle')).toHaveLength(0)
+})
+
+test('se 핸들 드래그로 크기를 조절한다', () => {
+  const { dispatch, container } = renderCanvas([EL_SHAPE])
+  fireEvent.pointerDown(container.querySelector('.handle-se')!, { clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(window, { clientX: 130, clientY: 120 })
+  fireEvent.pointerUp(window)
+  expect(appliedDoc(dispatch)!.slides[0]!.elements[1]!).toMatchObject({
+    frame: { left: 300, top: 300, width: 110, height: 100 },
+  })
+})
+
+test('nw 핸들 드래그는 left/top을 함께 옮긴다', () => {
+  const { dispatch, container } = renderCanvas([EL_SHAPE])
+  fireEvent.pointerDown(container.querySelector('.handle-nw')!, { clientX: 0, clientY: 0 })
+  fireEvent.pointerMove(window, { clientX: 10, clientY: 20 })
+  fireEvent.pointerUp(window)
+  expect(appliedDoc(dispatch)!.slides[0]!.elements[1]!).toMatchObject({
+    frame: { left: 310, top: 320, width: 70, height: 60 },
+  })
+})
+
+test('이동 중 pointercancel은 커밋 없이 리스너를 해제한다', () => {
+  const { dispatch, getByText } = renderCanvas([EL_TEXT])
+  fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
+  fireEvent.pointerMove(window, { clientX: 60, clientY: 30 })
+  fireEvent.pointerCancel(window)
+  expect(appliedDoc(dispatch)).toBeNull()
+  dispatch.mockClear()
+  fireEvent.pointerMove(window, { clientX: 200, clientY: 200 })
+  fireEvent.pointerUp(window)
+  expect(dispatch).not.toHaveBeenCalled()
 })
