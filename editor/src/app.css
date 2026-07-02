@@ -1,0 +1,31 @@
+:root {
+  --wd-primary: #1a56db;
+  --wd-accent: #e8f0fe;
+  --wd-text: #1f2937;
+  --wd-muted: #6b7280;
+  --wd-font-heading: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+  --wd-font-body: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: #f3f4f6; }
+
+.app { display: grid; grid-template-rows: 48px 1fr; grid-template-columns: 208px 1fr; height: 100vh; }
+.topbar { grid-column: 1 / 3; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.topbar h1 { font-size: 15px; margin: 0; font-weight: 600; }
+.topbar button { font: inherit; padding: 6px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
+.topbar button:hover { background: #f9fafb; }
+.file-name { color: #6b7280; font-size: 13px; }
+.notice { margin-left: auto; font-size: 12px; color: #92400e; background: #fef3c7; padding: 4px 8px; border-radius: 4px; }
+.error { margin-left: auto; font-size: 12px; color: #b91c1c; }
+
+.side { background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 12px; }
+.canvas-area { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.empty-state { color: #6b7280; font-size: 14px; }
+
+.slide-view { position: relative; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); flex: none; }
+.slide-view .el-text p { margin: 0; }
+
+.thumb { display: block; width: 100%; border: 2px solid transparent; border-radius: 4px; padding: 2px; margin-bottom: 8px; background: none; cursor: pointer; text-align: left; }
+.thumb.selected { border-color: var(--wd-primary); }
+.thumb-scale { position: relative; overflow: hidden; }
+.thumb-num { font-size: 11px; color: #6b7280; }
