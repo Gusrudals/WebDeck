@@ -13,10 +13,11 @@
 6. 모든 `.el`은 인라인 style에 `left / top / width / height`를 **px 단위**로 명시
 7. 요소는 캔버스(1280×720) 안에 완전히 들어와야 함 (벗어나면 경고)
 8. 이미지는 **data URI**만 사용 (외부 URL 금지 — 단일 파일 유통 원칙)
-9. `<img>`에는 `alt` 속성 필수
-10. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙)
-11. `el-shape`는 `data-shape="rect"`만 지원 (v1)
-12. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현
+9. `el-image`에는 `<img>`가 **정확히 1개** 있어야 함
+10. `<img>`에는 `alt` 속성 필수
+11. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙)
+12. `el-shape`는 `data-shape="rect"`만 지원 (v1)
+13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현
 
 ## 문서 골격
 
@@ -54,7 +55,7 @@
 </div>
 ```
 
-**이미지** — data URI, alt 필수, img에 `width:100%; height:100%`:
+**이미지** — `el-image`당 `<img>` 정확히 1개, data URI, alt 필수, img에 `width:100%; height:100%`:
 
 ```html
 <div class="el el-image" style="left:664px; top:200px; width:520px; height:440px;">
