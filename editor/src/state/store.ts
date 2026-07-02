@@ -38,6 +38,7 @@ export const initialEditorState: EditorState = {
 
 export type EditorAction =
   | { type: 'OPEN_SUCCESS'; doc: DeckDoc; fileName: string; fileHandle: FileSystemFileHandle | null }
+  | { type: 'START_DOC'; doc: DeckDoc; fileName: string }
   | { type: 'OPEN_ERROR'; message: string }
   | { type: 'SELECT_SLIDE'; index: number }
   | { type: 'APPLY_DOC'; doc: DeckDoc; select?: string[] }
@@ -51,6 +52,7 @@ export type EditorAction =
   | { type: 'SET_CLIPBOARD'; elements: KnownElement[] }
   | { type: 'MARK_SAVED'; doc: DeckDoc }
   | { type: 'SAVE_ERROR'; message: string }
+  | { type: 'SAVED_AS'; doc: DeckDoc; fileName: string; fileHandle: FileSystemFileHandle }
 
 export function countOpaque(doc: DeckDoc): number {
   return doc.slides.reduce((n, s) => n + s.elements.filter((e) => e.type === 'opaque').length, 0)
@@ -80,6 +82,17 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         fileHandle: action.fileHandle,
         opaqueCount: countOpaque(action.doc),
         savedDoc: action.doc,
+        clipboard: state.clipboard,
+      }
+    case 'START_DOC':
+      return {
+        ...initialEditorState,
+        doc: action.doc,
+        history: createHistory(action.doc),
+        fileName: action.fileName,
+        opaqueCount: countOpaque(action.doc),
+        // 새 문서는 저장 전까지 dirty — savedDoc을 비워 beforeunload 경고를 유지한다
+        savedDoc: null,
         clipboard: state.clipboard,
       }
     case 'OPEN_ERROR':
@@ -123,6 +136,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, clipboard: action.elements }
     case 'MARK_SAVED':
       return { ...state, savedDoc: action.doc, saveError: null }
+    case 'SAVED_AS':
+      return { ...state, savedDoc: action.doc, saveError: null, fileName: action.fileName, fileHandle: action.fileHandle }
     case 'SAVE_ERROR':
       return { ...state, saveError: action.message }
   }

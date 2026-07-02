@@ -156,4 +156,29 @@ describe('편집 상태', () => {
     s = editorReducer(s, { type: 'APPLY_DOC', doc: moveElement(s.doc!, s.doc!.slides[0]!.id, elId, 1, 1) })
     expect(s.saveError).toBeNull()
   })
+
+  test('START_DOC은 핸들 없이 시작하고 항상 dirty다', () => {
+    const doc_val = parseWebdeck(TWO_SLIDES)
+    const s = editorReducer(initialEditorState, { type: 'START_DOC', doc: doc_val, fileName: '제목 없음.html' })
+    expect(s.doc).toBe(doc_val)
+    expect(s.fileName).toBe('제목 없음.html')
+    expect(s.fileHandle).toBeNull()
+    expect(s.savedDoc).toBeNull()
+    expect(isDirty(s)).toBe(true)
+    expect(s.history!.past).toHaveLength(0)
+    expect(s.loadError).toBeNull()
+  })
+
+  test('SAVED_AS는 파일명·핸들을 교체하고 dirty를 해제한다', () => {
+    const s0 = opened()
+    const elId = s0.doc!.slides[0]!.elements[0]!.id
+    let s = editorReducer(s0, { type: 'APPLY_DOC', doc: moveElement(s0.doc!, s0.doc!.slides[0]!.id, elId, 1, 1) })
+    expect(isDirty(s)).toBe(true)
+    const handle = {} as FileSystemFileHandle
+    s = editorReducer(s, { type: 'SAVED_AS', doc: s.doc!, fileName: 'copy.html', fileHandle: handle })
+    expect(s.fileName).toBe('copy.html')
+    expect(s.fileHandle).toBe(handle)
+    expect(isDirty(s)).toBe(false)
+    expect(s.saveError).toBeNull()
+  })
 })
