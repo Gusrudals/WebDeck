@@ -16,7 +16,14 @@ try {
   process.exit(2)
 }
 
-const { errors, warnings } = validateWebdeck(html)
+let result
+try {
+  result = validateWebdeck(html)
+} catch (e) {
+  console.error(`검증 중 내부 오류가 발생했습니다: ${e.message}`)
+  process.exit(2)
+}
+const { errors, warnings } = result
 for (const w of warnings) console.log(`경고: ${w}`)
 for (const e of errors) console.log(`오류: ${e}`)
 

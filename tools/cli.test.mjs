@@ -1,7 +1,7 @@
-import { test } from 'node:test'
+import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { writeFileSync, mkdtempSync } from 'node:fs'
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -46,3 +46,5 @@ test('없는 파일은 종료 코드 2', () => {
   assert.equal(code, 2)
   assert.ok(out.includes('읽을 수 없습니다'))
 })
+
+after(() => rmSync(dir, { recursive: true, force: true }))

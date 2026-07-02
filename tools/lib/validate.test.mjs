@@ -91,3 +91,21 @@ test('parseInlineStyle은 선언을 소문자 속성 맵으로 파싱한다', ()
     color: 'var(--wd-text)',
   })
 })
+
+test('중첩된 .el은 오류', () => {
+  const slides = `<section class="slide"><div class="el el-text" style="left:0px; top:0px; width:200px; height:100px;"><p>a</p><div class="el el-shape" data-shape="rect" style="left:10px; top:10px; width:50px; height:50px;"></div></div></section>`
+  const { errors } = validateWebdeck(makeDoc({ slides }))
+  assert.ok(errors.some((e) => e.includes('중첩')))
+})
+
+test('<style> 안의 @import는 오류', () => {
+  const doc = makeDoc({ extraHead: '<style>@import url("https://cdn.example.com/x.css");</style>' })
+  const { errors } = validateWebdeck(doc)
+  assert.ok(errors.some((e) => e.includes('@import')))
+})
+
+test('iframe/video 등 외부 콘텐츠 요소는 오류', () => {
+  const slides = `<section class="slide"><div class="el el-text" style="left:0px; top:0px; width:200px; height:100px;"><iframe src="https://example.com"></iframe></div></section>`
+  const { errors } = validateWebdeck(makeDoc({ slides }))
+  assert.ok(errors.some((e) => e.includes('iframe')))
+})

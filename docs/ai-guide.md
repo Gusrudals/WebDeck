@@ -5,19 +5,19 @@
 
 ## 필수 규칙 (검증 항목)
 
-1. `<html>`에 `data-webdeck-version="1"` 속성 필수
-2. `<head>`에 `<meta charset="utf-8">`와 비어 있지 않은 `<title>` 필수
-3. 본문은 정확히 1개의 `<main class="deck" data-slide-width="1280" data-slide-height="720">`
-4. deck의 자식은 `<section class="slide">`만 허용 (1개 이상)
-5. 슬라이드의 자식은 전부 `.el` 요소 — `el-text` / `el-image` / `el-shape` 중 하나의 타입 클래스 필수
-6. 모든 `.el`은 인라인 style에 `left / top / width / height`를 **px 단위**로 명시
-7. 요소는 캔버스(1280×720) 안에 완전히 들어와야 함 (벗어나면 경고)
-8. 이미지는 **data URI**만 사용 (외부 URL 금지 — 단일 파일 유통 원칙)
-9. `el-image`에는 `<img>`가 **정확히 1개** 있어야 함
-10. `<img>`에는 `alt` 속성 필수
-11. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙)
-12. `el-shape`는 `data-shape="rect"`만 지원 (v1)
-13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현
+1. `<html>`에 `data-webdeck-version="1"` 속성 필수 (오류)
+2. `<head>`에 `<meta charset="utf-8">`와 비어 있지 않은 `<title>` 필수 (경고)
+3. 본문은 정확히 1개의 `<main class="deck" data-slide-width="1280" data-slide-height="720">` (오류)
+4. deck의 자식은 `<section class="slide">`만 허용 (1개 이상) (오류)
+5. 슬라이드의 자식은 전부 `.el` 요소 — `el-text` / `el-image` / `el-shape` 중 하나의 타입 클래스 필수 (오류)
+6. 모든 `.el`은 인라인 style에 `left / top / width / height`를 **px 단위**로 명시 (오류)
+7. 요소는 캔버스(1280×720) 안에 완전히 들어와야 함 (벗어나면 경고) (경고)
+8. 이미지는 **data URI**만 사용 (외부 URL 금지 — 단일 파일 유통 원칙) (경고)
+9. `el-image`에는 `<img>`가 **정확히 1개** 있어야 함 (오류)
+10. `<img>`에는 `alt` 속성 필수 (경고)
+11. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙) (오류)
+12. `el-shape`는 `data-shape="rect"`만 지원 (v1) (오류)
+13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현 (오류)
 
 ## 문서 골격
 
@@ -93,3 +93,4 @@
 - 슬라이드 직속에 `.el`이 아닌 태그 배치 (`<h1>` ❌ — 텍스트는 항상 `el-text` 안에)
 - 외부 이미지 URL 사용 (data URI로 변환할 것)
 - 텍스트를 도형 안에 중첩 (`el-shape` 안에 `<p>` ❌ — 별도 `el-text`를 위에 겹칠 것)
+- `iframe`/`video` 등 외부 콘텐츠 요소 사용 (v1에서 금지)

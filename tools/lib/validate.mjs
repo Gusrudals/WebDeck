@@ -50,6 +50,17 @@ export function validateWebdeck(html) {
     errors.push('문서: 외부 스타일시트 <link>는 허용되지 않습니다 (자기완결형 원칙)')
   }
 
+  for (const styleEl of root.querySelectorAll('style')) {
+    if (styleEl.text.includes('@import')) {
+      errors.push('문서: <style> 안의 @import는 허용되지 않습니다 (자기완결형 원칙)')
+      break
+    }
+  }
+  const forbidden = root.querySelectorAll('iframe, video, audio, embed, object')
+  if (forbidden.length > 0) {
+    errors.push(`문서: iframe/video/audio/embed/object 요소는 허용되지 않습니다 (v1, ${forbidden.length}개 발견)`)
+  }
+
   const decks = root.querySelectorAll('main.deck')
   if (decks.length !== 1) {
     errors.push(`문서: <main class="deck">가 정확히 1개여야 합니다 (현재 ${decks.length}개)`)
@@ -93,6 +104,10 @@ function validateSlide(slide, num, ctx) {
     if (!type) {
       errors.push(`${label}: .el 요소에 타입 클래스(${ELEMENT_TYPES.join('/')})가 없습니다`)
       continue
+    }
+
+    if (el.querySelector('.el')) {
+      errors.push(`${label}: .el 안에 다른 .el을 중첩할 수 없습니다 (겹침은 절대 좌표와 순서로 표현)`)
     }
 
     const style = parseInlineStyle(el.getAttribute('style') || '')
