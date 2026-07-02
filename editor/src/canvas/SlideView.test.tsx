@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { parseWebdeck } from '../model/parse.ts'
 import { CanvasArea } from './CanvasArea.tsx'
 import { SlideView } from './SlideView.tsx'
@@ -39,6 +39,7 @@ describe('SlideView', () => {
 })
 
 test('CanvasArea는 현재 슬라이드를 렌더링한다', () => {
-  render(<CanvasArea doc={report} slideIndex={1} />)
+  const dispatch = vi.fn()
+  render(<CanvasArea doc={report} slideIndex={1} selectedIds={[]} editingTextId={null} dispatch={dispatch} />)
   expect(screen.getByText('목차')).toBeTruthy()
 })

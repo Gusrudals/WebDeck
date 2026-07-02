@@ -29,3 +29,10 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .thumb.selected { border-color: var(--wd-primary); }
 .thumb-scale { position: relative; overflow: hidden; }
 .thumb-num { font-size: 11px; color: #6b7280; }
+
+.slide-view.editable .el { cursor: move; }
+.selection-overlay { position: absolute; inset: 0; pointer-events: none; }
+.selection-box { position: absolute; outline: 2px solid var(--wd-primary); }
+.snap-guide { position: absolute; background: #f59e0b; z-index: 10; }
+.snap-guide-x { top: 0; bottom: 0; width: 1px; }
+.snap-guide-y { left: 0; right: 0; height: 1px; }

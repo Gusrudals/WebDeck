@@ -47,7 +47,13 @@ export function App() {
         )}
       </aside>
       {state.doc ? (
-        <CanvasArea doc={state.doc} slideIndex={state.currentSlideIndex} />
+        <CanvasArea
+          doc={state.doc}
+          slideIndex={state.currentSlideIndex}
+          selectedIds={state.selectedIds}
+          editingTextId={state.editingTextId}
+          dispatch={dispatch}
+        />
       ) : (
         <main className="canvas-area">
           <p className="empty-state">문서를 열어 시작하세요</p>
