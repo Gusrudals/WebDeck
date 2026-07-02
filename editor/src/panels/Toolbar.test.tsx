@@ -106,6 +106,21 @@ test('삭제는 선택 요소를 지우고 선택을 비운다', () => {
 
 test('배경색 변경은 슬라이드 bg를 바꾼다', () => {
   const { dispatch, getByLabelText } = renderToolbar()
-  fireEvent.change(getByLabelText('배경색'), { target: { value: '#ff0000' } })
+  const input = getByLabelText('배경색')
+  fireEvent.change(input, { target: { value: '#ff0000' } })
+  fireEvent.blur(input)
   expect(appliedDoc(dispatch)!.slides[0]!.bg).toBe('#ff0000')
+})
+
+test('배경색은 피커 조작 중에는 커밋하지 않고 blur에 1회만 커밋한다', () => {
+  const { dispatch, getByLabelText } = renderToolbar()
+  const input = getByLabelText('배경색')
+  fireEvent.change(input, { target: { value: '#ff0000' } })
+  fireEvent.change(input, { target: { value: '#00ff00' } })
+  const applyCalls = () => dispatch.mock.calls.map(([a]) => a).filter((a) => a?.type === 'APPLY_DOC')
+  expect(applyCalls()).toHaveLength(0)
+  fireEvent.blur(input)
+  const calls = applyCalls()
+  expect(calls).toHaveLength(1)
+  expect((calls[0]!.doc as DeckDoc).slides[0]!.bg).toBe('#00ff00')
 })

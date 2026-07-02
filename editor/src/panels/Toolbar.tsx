@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
 import { alignFrame } from '../canvas/geometry.ts'
 import type { AlignMode } from '../canvas/geometry.ts'
@@ -44,6 +45,8 @@ export function Toolbar({
   idGen: () => string
 }) {
   const { doc, currentSlideIndex, selectedIds, editingTextId } = state
+  /** 배경색 피커 조작 중 임시값 — OS 피커 드래그 동안 onChange가 연속 발화하므로 blur 시 1회만 커밋 */
+  const [bgDraft, setBgDraft] = useState<string | null>(null)
   const slide = doc?.slides[currentSlideIndex] ?? null
   const hasDoc = doc !== null && slide !== null
   const hasSelection = hasDoc && selectedIds.length > 0
@@ -143,7 +146,17 @@ export function Toolbar({
       <div className="group" aria-label="슬라이드">
         <label className="bg-label">
           배경
-          <input type="color" aria-label="배경색" disabled={!hasDoc} value={bgValue} onChange={(e) => changeBg(e.target.value)} />
+          <input
+            type="color"
+            aria-label="배경색"
+            disabled={!hasDoc}
+            value={bgDraft ?? bgValue}
+            onChange={(e) => setBgDraft(e.target.value)}
+            onBlur={() => {
+              if (bgDraft !== null && bgDraft !== bgValue) changeBg(bgDraft)
+              setBgDraft(null)
+            }}
+          />
         </label>
       </div>
     </div>
