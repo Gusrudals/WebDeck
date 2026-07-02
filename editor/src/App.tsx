@@ -1,12 +1,14 @@
 import { useEffect, useReducer, useRef } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
-import { downloadHtml, openHtmlFile, saveToHandle } from './file/fileAccess.ts'
+import { downloadHtml, openHtmlFile, saveAsHtmlFile, saveToHandle } from './file/fileAccess.ts'
+import type { SaveAsResult } from './file/fileAccess.ts'
 import { createIdGen } from './model/id.ts'
 import { canRedo, canUndo } from './model/history.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
 import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts'
 import { checkRoundTrip } from './model/roundtrip.ts'
 import { serializeWebdeck } from './model/serialize.ts'
+import type { DeckDoc } from './model/types.ts'
 import { SlidePanel } from './panels/SlidePanel.tsx'
 import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState, isDirty } from './state/store.ts'
@@ -15,7 +17,7 @@ import { useShortcuts } from './hooks/useShortcuts.ts'
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
   const idGenRef = useRef(createIdGen('n'))
-  useShortcuts(state, dispatch, idGenRef.current, handleSave)
+  useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs)
 
   useEffect(() => {
     if (!isDirty(state)) return
@@ -64,8 +66,37 @@ export function App() {
         return
       }
     }
-    downloadHtml(fileName ?? 'webdeck.html', html)
-    dispatch({ type: 'MARK_SAVED', doc })
+    await saveAsFlow(doc, html)
+  }
+
+  async function handleSaveAs() {
+    const { doc } = state
+    if (!doc) return
+    const problem = checkRoundTrip(doc)
+    if (problem) {
+      dispatch({ type: 'SAVE_ERROR', message: `저장 중단: ${problem}` })
+      return
+    }
+    await saveAsFlow(doc, serializeWebdeck(doc))
+  }
+
+  /** 핸들이 없거나 새 대상이 필요한 저장 — 피커 확보에 성공하면 이후 Ctrl+S는 제자리 저장 */
+  async function saveAsFlow(doc: DeckDoc, html: string) {
+    const { fileName } = state
+    let result: SaveAsResult
+    try {
+      result = await saveAsHtmlFile(fileName ?? '제목 없음.html', html)
+    } catch {
+      dispatch({ type: 'SAVE_ERROR', message: '파일에 저장하지 못했습니다 (권한 문제일 수 있음)' })
+      return
+    }
+    if (result === 'cancelled') return
+    if (result === 'unsupported') {
+      downloadHtml(fileName ?? '제목 없음.html', html)
+      dispatch({ type: 'MARK_SAVED', doc })
+      return
+    }
+    dispatch({ type: 'SAVED_AS', doc, fileName: result.name, fileHandle: result.handle })
   }
 
   function handleDownloadFallback() {
@@ -81,6 +112,7 @@ export function App() {
         <h1>WebDeck 에디터</h1>
         <button type="button" onClick={handleOpen}>열기</button>
         <button type="button" disabled={!state.doc} onClick={handleSave}>저장</button>
+        <button type="button" disabled={!state.doc} onClick={handleSaveAs}>다른 이름으로 저장</button>
         <button type="button" disabled={!state.history || !canUndo(state.history)} onClick={() => dispatch({ type: 'UNDO' })}>실행 취소</button>
         <button type="button" disabled={!state.history || !canRedo(state.history)} onClick={() => dispatch({ type: 'REDO' })}>다시 실행</button>
         {state.fileName && (

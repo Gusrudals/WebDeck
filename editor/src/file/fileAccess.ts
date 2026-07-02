@@ -66,3 +66,27 @@ export function downloadHtml(fileName: string, html: string): void {
   // 일부 브라우저는 click 직후 동기 revoke 시 다운로드가 시작되기 전에 URL이 무효화된다
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+interface SavePickerWindow extends Window {
+  showSaveFilePicker?: (options?: unknown) => Promise<FileSystemFileHandle>
+}
+
+export type SaveAsResult = { handle: FileSystemFileHandle; name: string } | 'cancelled' | 'unsupported'
+
+/** 다른 이름으로 저장: 피커로 대상 파일을 고르고 즉시 쓴다 */
+export async function saveAsHtmlFile(suggestedName: string, html: string): Promise<SaveAsResult> {
+  const w = window as SavePickerWindow
+  if (!w.showSaveFilePicker) return 'unsupported'
+  let handle: FileSystemFileHandle
+  try {
+    handle = await w.showSaveFilePicker({
+      suggestedName,
+      types: [{ description: 'WebDeck 문서', accept: { 'text/html': ['.html'] } }],
+    })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled'
+    throw e
+  }
+  if (!(await saveToHandle(handle, html))) return 'unsupported'
+  return { handle, name: handle.name }
+}

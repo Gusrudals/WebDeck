@@ -121,3 +121,42 @@ test('쓰기 실패 시 오류와 다운로드 폴백을 제안한다', async ()
   await userEvent.click(screen.getByRole('button', { name: '다운로드로 저장' }))
   expect(URL.createObjectURL).toHaveBeenCalled()
 })
+
+test('다른 이름으로 저장은 피커로 핸들을 얻고 파일명을 교체한다', async () => {
+  stubPickerWithWritable('report.html', VALID_DOC)
+  const written: string[] = []
+  const newHandle = {
+    name: 'copy.html',
+    createWritable: () =>
+      Promise.resolve({
+        write: (d: string) => {
+          written.push(d)
+          return Promise.resolve()
+        },
+        close: () => Promise.resolve(),
+      }),
+  }
+  ;(window as unknown as { showSaveFilePicker?: () => Promise<unknown> }).showSaveFilePicker = () =>
+    Promise.resolve(newHandle)
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '다른 이름으로 저장' }))
+  await vi.waitFor(() => expect(written).toHaveLength(1))
+  expect(written[0]).toContain('data-webdeck-version="1"')
+  expect(screen.getByText('copy.html')).toBeTruthy()
+  delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker
+})
+
+test('다른 이름으로 저장 피커 취소는 아무 것도 바꾸지 않는다', async () => {
+  stubPickerWithWritable('report.html', VALID_DOC)
+  ;(window as unknown as { showSaveFilePicker?: () => Promise<unknown> }).showSaveFilePicker = () =>
+    Promise.reject(new DOMException('취소', 'AbortError'))
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '다른 이름으로 저장' }))
+  expect(screen.getByText('report.html')).toBeTruthy()
+  expect(screen.queryByRole('alert')).toBeNull()
+  delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker
+})

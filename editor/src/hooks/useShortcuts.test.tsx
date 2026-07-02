@@ -33,20 +33,23 @@ function Harness({
   state,
   dispatch,
   onSave,
+  onSaveAs,
 }: {
   state: EditorState
   dispatch: Dispatch<EditorAction>
   onSave?: () => void
+  onSaveAs?: () => void
 }) {
-  useShortcuts(state, dispatch, idGen, onSave)
+  useShortcuts(state, dispatch, idGen, onSave, onSaveAs)
   return <input aria-label="더미 입력" />
 }
 
 function setup(over: Partial<EditorState> = {}) {
   const dispatch = vi.fn()
   const onSave = vi.fn()
-  const utils = render(<Harness state={makeState(over)} dispatch={dispatch} onSave={onSave} />)
-  return { dispatch, onSave, ...utils }
+  const onSaveAs = vi.fn()
+  const utils = render(<Harness state={makeState(over)} dispatch={dispatch} onSave={onSave} onSaveAs={onSaveAs} />)
+  return { dispatch, onSave, onSaveAs, ...utils }
 }
 
 function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
@@ -132,5 +135,12 @@ test('Ctrl+S는 onSave를 호출하고 기본 동작을 막는다', () => {
 test('텍스트 편집 중 Ctrl+S는 무시한다', () => {
   const { onSave } = setup({ editingTextId: EL_TEXT })
   fireEvent.keyDown(window, { key: 's', ctrlKey: true })
+  expect(onSave).not.toHaveBeenCalled()
+})
+
+test('Ctrl+Shift+S는 onSaveAs를 호출하고 onSave는 호출하지 않는다', () => {
+  const { onSave, onSaveAs } = setup()
+  fireEvent.keyDown(window, { key: 's', ctrlKey: true, shiftKey: true })
+  expect(onSaveAs).toHaveBeenCalledTimes(1)
   expect(onSave).not.toHaveBeenCalled()
 })

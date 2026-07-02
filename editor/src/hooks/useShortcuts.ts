@@ -19,6 +19,7 @@ export function useShortcuts(
   dispatch: Dispatch<EditorAction>,
   idGen: () => string,
   onSave?: () => void,
+  onSaveAs?: () => void,
 ): void {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -42,7 +43,8 @@ export function useShortcuts(
       }
       if (meta && key === 's') {
         e.preventDefault()
-        onSave?.()
+        if (e.shiftKey) onSaveAs?.()
+        else onSave?.()
         return
       }
       if (!doc) return
@@ -101,5 +103,5 @@ export function useShortcuts(
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [state, dispatch, idGen, onSave])
+  }, [state, dispatch, idGen, onSave, onSaveAs])
 }
