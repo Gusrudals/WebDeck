@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head>
+<meta charset="utf-8">
+<title>WebDeck 문서</title>
+<style>
+  :root {
+    --wd-primary: #1a56db;
+    --wd-accent: #e8f0fe;
+    --wd-text: #1f2937;
+    --wd-muted: #6b7280;
+    --wd-font-heading: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+    --wd-font-body: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e5e7eb; font-family: var(--wd-font-body); color: var(--wd-text); }
+  .deck { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; }
+  .slide {
+    position: relative; width: 1280px; height: 720px; flex: none;
+    background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
+  .el { position: absolute; }
+  .el-text p { margin: 0; }
+  @media print {
+    body { background: none; }
+    .deck { display: block; padding: 0; }
+    .slide { box-shadow: none; page-break-after: always; }
+  }
+  @page { size: 1280px 720px; margin: 0; }
+</style>
+</head>
+<body>
+<main class="deck" data-slide-width="1280" data-slide-height="720">
+
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-shape" data-shape="rect" style="left:0px; top:600px; width:1280px; height:120px; background:var(--wd-accent);"></div>
+    <div class="el el-text" style="left:96px; top:240px; width:1088px; height:140px;">
+      <p><strong><span style="font-size:54px;">문서 제목</span></strong></p>
+    </div>
+    <div class="el el-text" style="left:96px; top:400px; width:1088px; height:60px;">
+      <p><span style="font-size:24px; color:var(--wd-muted);">부제목 · 부서명 · 2026. 07.</span></p>
+    </div>
+  </section>
+
+  <section class="slide" data-bg="#ffffff">
+    <div class="el el-text" style="left:96px; top:64px; width:1088px; height:80px;">
+      <p><strong><span style="font-size:36px;">섹션 제목</span></strong></p>
+    </div>
+    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
+    <div class="el el-text" style="left:96px; top:200px; width:1088px; height:440px;">
+      <p><span style="font-size:24px;">본문 내용을 여기에 작성합니다.</span></p>
+    </div>
+  </section>
+
+</main>
+<script>
+  (function () {
+    document.querySelectorAll('.slide').forEach(function (slide) {
+      if (slide.dataset.bg) slide.style.background = slide.dataset.bg;
+    });
+    var deck = document.querySelector('.deck');
+    var slideWidth = Number(deck.dataset.slideWidth) || 1280;
+    function fit() {
+      deck.style.zoom = Math.min(1, (window.innerWidth - 48) / slideWidth);
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('beforeprint', function () { deck.style.zoom = 1; });
+    window.addEventListener('afterprint', fit);
+    fit();
+  })();
+</script>
+</body>
+</html>
