@@ -30,7 +30,7 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .thumb-scale { position: relative; overflow: hidden; }
 .thumb-num { font-size: 11px; color: #6b7280; }
 
-.slide-view.editable .el { cursor: move; }
+.slide-view.editable .el { cursor: move; user-select: none; }
 .selection-overlay { position: absolute; inset: 0; pointer-events: none; }
 .selection-box { position: absolute; outline: 2px solid var(--wd-primary); }
 .snap-guide { position: absolute; background: #f59e0b; z-index: 10; }

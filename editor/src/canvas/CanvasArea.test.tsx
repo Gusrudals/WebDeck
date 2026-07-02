@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
+import type { DeckDoc } from '../model/types.ts'
 import { parseWebdeck } from '../model/parse.ts'
 import { CanvasArea } from './CanvasArea.tsx'
 
@@ -15,6 +16,18 @@ const DOC = parseWebdeck(`<!DOCTYPE html>
 
 const EL_TEXT = DOC.slides[0]!.elements[0]!.id
 const EL_SHAPE = DOC.slides[0]!.elements[1]!.id
+
+const DOC_ONE = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el el-text" style="left:0px; top:0px; width:100px; height:50px;"><p>홀로</p></div></section>
+</main></body></html>`)
+
+function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
+  const action = dispatch.mock.calls.map(([a]) => a).find((a) => a?.type === 'APPLY_DOC')
+  return action ? (action.doc as DeckDoc) : null
+}
 
 function renderCanvas(selectedIds: string[] = []) {
   const dispatch = vi.fn()
@@ -67,4 +80,48 @@ test('선택된 요소에 선택 테두리가 그려진다', () => {
   expect(box).toBeTruthy()
   expect(box.style.left).toBe('300px')
   expect(box.style.width).toBe('80px')
+})
+
+test('드래그로 요소를 이동하고 pointerup에 1회만 커밋한다', () => {
+  const { dispatch, getByText } = renderCanvas([EL_TEXT])
+  fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
+  fireEvent.pointerMove(window, { clientX: 60, clientY: 30 })
+  fireEvent.pointerUp(window)
+  const doc = appliedDoc(dispatch)
+  expect(doc).toBeTruthy()
+  expect(doc!.slides[0]!.elements[0]!).toMatchObject({ frame: { left: 50, top: 20 } })
+  expect(dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')).toHaveLength(1)
+})
+
+test('3px 미만 이동은 클릭으로 간주하고 커밋하지 않는다', () => {
+  const { dispatch, getByText } = renderCanvas([EL_TEXT])
+  fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
+  fireEvent.pointerMove(window, { clientX: 11, clientY: 11 })
+  fireEvent.pointerUp(window)
+  expect(appliedDoc(dispatch)).toBeNull()
+})
+
+test('단일 이동은 슬라이드 중앙에 스냅하고 가이드를 그린다', () => {
+  const dispatch = vi.fn()
+  const elId = DOC_ONE.slides[0]!.elements[0]!.id
+  const { getByText, container } = render(
+    <CanvasArea doc={DOC_ONE} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} />,
+  )
+  fireEvent.pointerDown(getByText('홀로'), { clientX: 0, clientY: 0 })
+  fireEvent.pointerMove(window, { clientX: 594, clientY: 100 })
+  const guide = container.querySelector('.snap-guide-x') as HTMLElement
+  expect(guide).toBeTruthy()
+  expect(guide.style.left).toBe('640px')
+  fireEvent.pointerUp(window)
+  expect(appliedDoc(dispatch)!.slides[0]!.elements[0]!).toMatchObject({ frame: { left: 590, top: 100 } })
+})
+
+test('다중 선택 드래그는 모두 함께 이동한다 (스냅 없음)', () => {
+  const { dispatch, getByText } = renderCanvas([EL_TEXT, EL_SHAPE])
+  fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
+  fireEvent.pointerMove(window, { clientX: 60, clientY: 30 })
+  fireEvent.pointerUp(window)
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[0]!).toMatchObject({ frame: { left: 50, top: 20 } })
+  expect(doc.slides[0]!.elements[1]!).toMatchObject({ frame: { left: 350, top: 320 } })
 })
