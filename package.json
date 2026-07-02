@@ -1,0 +1,13 @@
+{
+  "name": "webdeck",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test 'tools/**/*.test.mjs'",
+    "validate": "node tools/validate-webdeck.mjs"
+  },
+  "dependencies": {
+    "node-html-parser": "^7.0.1"
+  }
+}
