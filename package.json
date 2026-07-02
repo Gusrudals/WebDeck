@@ -5,6 +5,8 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "test": "node --test 'tools/**/*.test.mjs'",
+    "test:editor": "npm --prefix editor test",
+    "test:all": "npm test && npm run test:editor",
     "validate": "node tools/validate-webdeck.mjs"
   },
   "dependencies": {
