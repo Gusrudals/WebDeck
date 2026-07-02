@@ -71,6 +71,7 @@ describe('요소 커맨드', () => {
     expect(ids(moveElementZ(doc, 'wd-1', 'wd-4', 'back'))).toEqual(['wd-4', 'wd-2', 'wd-3'])
     expect(ids(moveElementZ(doc, 'wd-1', 'wd-2', 'front'))).toEqual(['wd-3', 'wd-4', 'wd-2'])
     expect(ids(moveElementZ(doc, 'wd-1', 'wd-2', 'backward'))).toEqual(ids(doc)) // 이미 맨 뒤
+    expect(moveElementZ(doc, 'wd-1', 'wd-2', 'backward')).toBe(doc) // 경계 no-op은 같은 참조
   })
 })
 
@@ -98,5 +99,11 @@ describe('슬라이드 커맨드', () => {
     expect(() => removeSlide(removeSlide(doc, 'wd-1'), 's-1')).toThrow('마지막 슬라이드')
     expect(moveSlide(doc, 0, 1).slides.map((s) => s.id)).toEqual(['s-1', 'wd-1'])
     expect(setSlideBg(doc, 'wd-1', '#000000').slides[0]!.bg).toBe('#000000')
+  })
+
+  test('moveSlide 범위 초과는 오류', () => {
+    const doc = fixture()
+    expect(() => moveSlide(doc, 0, 5)).toThrow('범위를 벗어났습니다')
+    expect(() => moveSlide(doc, -1, 0)).toThrow('범위를 벗어났습니다')
   })
 })

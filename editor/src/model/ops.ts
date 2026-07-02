@@ -73,16 +73,18 @@ export function removeElement(doc: DeckDoc, slideId: string, elementId: string):
 export type ZDirection = 'forward' | 'backward' | 'front' | 'back'
 
 export function moveElementZ(doc: DeckDoc, slideId: string, elementId: string, dir: ZDirection): DeckDoc {
-  return mapSlide(doc, slideId, (slide) => {
-    const i = elementIndexOf(slide, elementId)
-    const target = { forward: i + 1, backward: i - 1, front: slide.elements.length - 1, back: 0 }[dir]
-    const clamped = Math.max(0, Math.min(slide.elements.length - 1, target))
-    if (clamped === i) return slide
-    const elements = slide.elements.slice()
-    const [el] = elements.splice(i, 1)
-    elements.splice(clamped, 0, el!)
-    return { ...slide, elements }
-  })
+  const si = slideIndexOf(doc, slideId)
+  const slide = doc.slides[si]!
+  const i = elementIndexOf(slide, elementId)
+  const target = { forward: i + 1, backward: i - 1, front: slide.elements.length - 1, back: 0 }[dir]
+  const clamped = Math.max(0, Math.min(slide.elements.length - 1, target))
+  if (clamped === i) return doc
+  const elements = slide.elements.slice()
+  const [el] = elements.splice(i, 1)
+  elements.splice(clamped, 0, el!)
+  const slides = doc.slides.slice()
+  slides[si] = { ...slide, elements }
+  return { ...doc, slides }
 }
 
 // ---------- 슬라이드 커맨드 ----------
