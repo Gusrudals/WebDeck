@@ -1954,6 +1954,8 @@ Expected: 신규 테스트 FAIL
 
 - [ ] **Step 3: 구현**
 
+> **구현 정정 (2026-07-03)**: 아래 코드의 intersectsNode 폴백(containment)은 구현 리뷰에서 죽은 코드(happy-dom도 intersectsNode 구현)이자 다중 블록 셀렉션 버그로 판명되어 **제거**됐다. 실제 구현은 `range.intersectsNode(blk)`를 직접 사용한다 (커밋 bdd8d20).
+
 `editor/src/panels/format.ts`에 추가:
 
 ```ts
@@ -1969,10 +1971,7 @@ export function setLineHeight(value: number): void {
   const editable = anchorEl?.closest('.text-editable')
   if (!editable) return
   const blocks = Array.from(editable.querySelectorAll<HTMLElement>('p, li'))
-  // happy-dom 등 intersectsNode 미구현 환경은 포함 관계로 폴백
-  const intersects = (b: HTMLElement) =>
-    typeof range.intersectsNode === 'function' ? range.intersectsNode(b) : b.contains(anchor) || b === anchorEl
-  for (const b of blocks.filter(intersects)) b.style.lineHeight = String(value)
+  for (const b of blocks) if (range.intersectsNode(b)) b.style.lineHeight = String(value)
 }
 ```
 
