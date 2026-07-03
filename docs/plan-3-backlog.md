@@ -4,6 +4,9 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 
 ## 편집 기능 확장 (추후)
 
+- 텍스트 편집·INPUT 포커스 중 Ctrl+S/Ctrl+Shift+S가 preventDefault 없이 무시되어 브라우저 저장 대화상자가 뜸 — 저장 키만 조기 preventDefault 검토
+- handleStart의 unknown 템플릿 key가 조용히 no-op — OPEN_ERROR 피드백 추가 검토
+- vite.config fs.allow 축소 시 ['.', '../templates'] 형태 필수(단독 '../templates'는 dev를 깨뜨림) + npm run dev 스모크 동반
 - 시작 화면 템플릿 카드에 미리보기 썸네일 (현재는 라벨·설명 텍스트만)
 - 회사 커스텀 템플릿 등록 (현재는 빌드 시 templates/ 내장 3종 고정 — 파일 추가 후 재빌드 필요)
 - 텍스트 서식을 편집 모드 밖에서도 적용 (요소만 선택한 상태의 굵게/크기 — 저장된 html 변환 필요)

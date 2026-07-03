@@ -6,7 +6,7 @@ const files = import.meta.glob('../../../templates/*.html', {
 }) as Record<string, string>
 
 const LABELS: Record<string, { label: string; description: string }> = {
-  minimal: { label: '빈 문서', description: '슬라이드 1장으로 시작' },
+  minimal: { label: '빈 문서', description: '기본 구성 2장으로 시작' },
   'business-report': { label: '업무 보고', description: '표지·목차·본문을 갖춘 보고서' },
   'project-proposal': { label: '프로젝트 제안', description: '제안 개요와 로드맵 구성' },
 }

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseWebdeck } from '../model/parse.ts'
+import { checkRoundTrip } from '../model/roundtrip.ts'
 import { TEMPLATES } from './templates.ts'
 
 describe('내장 템플릿', () => {
@@ -20,6 +21,7 @@ describe('내장 템플릿', () => {
       const doc = parseWebdeck(t.html)
       expect(doc.slides.length, t.key).toBeGreaterThanOrEqual(1)
       expect(t.label.length, t.key).toBeGreaterThan(0)
+      expect(checkRoundTrip(doc), t.key).toBeNull()
     }
   })
 })
