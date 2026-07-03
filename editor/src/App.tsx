@@ -1,5 +1,7 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
+import { DocumentMode } from './docmode/DocumentMode.tsx'
+import type { DocModeFile } from './docmode/DocumentMode.tsx'
 import { downloadHtml, openHtmlFile, saveAsHtmlFile, saveToHandle } from './file/fileAccess.ts'
 import type { SaveAsResult } from './file/fileAccess.ts'
 import { TEMPLATES } from './file/templates.ts'
@@ -19,15 +21,18 @@ import { useShortcuts } from './hooks/useShortcuts.ts'
 
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
+  const [docFile, setDocFile] = useState<{ seq: number; file: DocModeFile } | null>(null)
+  const docSeqRef = useRef(0)
   const idGenRef = useRef(createIdGen('n'))
-  useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs)
+  useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs, docFile === null)
 
   useEffect(() => {
-    if (!isDirty(state)) return
+    // 문서 모드에서는 DocumentMode가 자체 beforeunload를 관리한다 — 스테일 덱 dirty로 경고하지 않는다
+    if (docFile !== null || !isDirty(state)) return
     const warn = (e: BeforeUnloadEvent) => e.preventDefault()
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [state])
+  }, [state, docFile])
 
   /** 미저장 변경이 있으면 진행 여부를 묻는다 — dirty가 아니면 confirm을 띄우지 않는다 */
   function confirmDiscard(): boolean {
@@ -47,7 +52,8 @@ export function App() {
   }
 
   async function handleOpen() {
-    if (!confirmDiscard()) return
+    // 문서 모드에서는 DocumentMode가 자체 dirty 확인을 이미 마쳤다 — 스테일 덱 상태로 이중 confirm하지 않는다
+    if (docFile === null && !confirmDiscard()) return
     let opened
     try {
       opened = await openHtmlFile()
@@ -58,12 +64,16 @@ export function App() {
     if (!opened) return
     try {
       const doc = parseWebdeck(opened.text)
+      setDocFile(null)
       dispatch({ type: 'OPEN_SUCCESS', doc, fileName: opened.name, fileHandle: opened.handle })
     } catch (e) {
-      dispatch({
-        type: 'OPEN_ERROR',
-        message: e instanceof WebdeckParseError ? e.message : '문서를 해석할 수 없습니다',
-      })
+      if (e instanceof WebdeckParseError) {
+        // 일반 HTML — 문서 모드로 진입. seq 키로 연속 열기 시 DocumentMode를 재마운트한다
+        docSeqRef.current += 1
+        setDocFile({ seq: docSeqRef.current, file: { name: opened.name, handle: opened.handle, html: opened.text } })
+        return
+      }
+      dispatch({ type: 'OPEN_ERROR', message: '문서를 해석할 수 없습니다' })
     }
   }
 
@@ -125,6 +135,10 @@ export function App() {
     if (!doc || checkRoundTrip(doc) !== null) return
     downloadHtml(fileName ?? 'webdeck.html', serializeWebdeck(doc))
     dispatch({ type: 'MARK_SAVED', doc })
+  }
+
+  if (docFile) {
+    return <DocumentMode key={docFile.seq} file={docFile.file} onOpen={handleOpen} />
   }
 
   return (

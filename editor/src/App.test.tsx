@@ -56,12 +56,38 @@ test('썸네일 클릭으로 슬라이드를 전환한다', async () => {
   expect(screen.getAllByText('위젯').length).toBeGreaterThanOrEqual(1)
 })
 
-test('WebDeck 문서가 아니면 오류를 표시한다', async () => {
-  stubFilePicker('bad.html', '<html><body><p>일반 문서</p></body></html>')
+test('일반 HTML을 열면 문서 모드로 진입한다', async () => {
+  stubFilePicker('plain.html', '<html><body><p>일반 문서</p></body></html>')
   render(<App />)
   await userEvent.click(screen.getByRole('button', { name: '열기' }))
-  const alert = await screen.findByRole('alert')
-  expect(alert.textContent).toContain('WebDeck 문서가 아닙니다')
+  expect(await screen.findByText('문서 모드 — 일반 HTML')).toBeTruthy()
+  expect(screen.getByText('plain.html')).toBeTruthy()
+  expect(screen.getByTitle('문서 편집')).toBeTruthy()
+  // 슬라이드 에디터 UI는 렌더링되지 않는다
+  expect(screen.queryByText('시작하기')).toBeNull()
+})
+
+test('문서 모드에서 WebDeck 문서를 열면 슬라이드 에디터로 돌아온다', async () => {
+  stubFilePicker('plain.html', '<html><body><p>일반 문서</p></body></html>')
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findByText('문서 모드 — 일반 HTML')
+  stubFilePicker('report.html', VALID_DOC)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  expect((await screen.findAllByText('첫 슬라이드 제목')).length).toBeGreaterThanOrEqual(1)
+  expect(screen.queryByText('문서 모드 — 일반 HTML')).toBeNull()
+})
+
+test('문서 모드에서는 슬라이드 단축키(Cmd+S)가 이전 덱을 저장하지 않는다', async () => {
+  const written = stubPickerWithWritable('report.html', VALID_DOC)
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  stubFilePicker('plain.html', '<html><body><p>일반 문서</p></body></html>')
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findByText('문서 모드 — 일반 HTML')
+  await userEvent.keyboard('{Meta>}s{/Meta}')
+  expect(written).toHaveLength(0)
 })
 
 function stubPickerWithWritable(name: string, text: string) {

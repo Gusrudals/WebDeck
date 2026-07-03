@@ -20,8 +20,10 @@ export function useShortcuts(
   idGen: () => string,
   onSave?: () => void,
   onSaveAs?: () => void,
+  enabled = true,
 ): void {
   useEffect(() => {
+    if (!enabled) return
     function onKeyDown(e: KeyboardEvent) {
       const { doc, currentSlideIndex, selectedIds, editingTextId, clipboard } = state
       // 텍스트 편집 중엔 contentEditable의 기본 동작(브라우저 undo/복사 등)에 맡긴다
@@ -103,5 +105,5 @@ export function useShortcuts(
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [state, dispatch, idGen, onSave, onSaveAs])
+  }, [state, dispatch, idGen, onSave, onSaveAs, enabled])
 }
