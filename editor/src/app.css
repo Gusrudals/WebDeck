@@ -97,3 +97,9 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .btn-row button { font: inherit; font-size: 12px; padding: 3px 7px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; }
 .opacity-value { font-size: 12px; color: #6b7280; width: 34px; text-align: right; }
 .prop-row input[type='range'] { flex: 1; min-width: 0; }
+
+/* 문서 모드 (일반 HTML 편집) */
+.docmode { display: flex; flex-direction: column; height: 100vh; }
+.docmode .topbar { flex: none; }
+.docmode-badge { font-size: 12px; color: #1e40af; background: #dbeafe; padding: 4px 8px; border-radius: 4px; }
+.docmode-frame { flex: 1; width: 100%; border: none; background: #fff; }
