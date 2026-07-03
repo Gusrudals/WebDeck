@@ -16,8 +16,20 @@ const DOC = parseWebdeck(`<!DOCTYPE html>
 </section>
 </main></body></html>`)
 
+const DOC_STYLED = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="rect" style="left:10px; top:10px; width:50px; height:50px; border:1px solid #000000; box-shadow:0 2px 6px rgba(0,0,0,0.25); opacity:0.5;"></div>
+<div class="el el-shape" data-shape="rect" style="left:100px; top:10px; width:50px; height:50px; border:3px double red;"></div>
+</section>
+</main></body></html>`)
+
 const EL_TEXT = DOC.slides[0]!.elements[0]!.id
 const EL_SHAPE = DOC.slides[0]!.elements[1]!.id
+const EL_BORDERED = DOC_STYLED.slides[0]!.elements[0]!.id
+const EL_CUSTOM_BORDER = DOC_STYLED.slides[0]!.elements[1]!.id
 
 function makeState(over: Partial<EditorState> = {}): EditorState {
   const opened = editorReducer(initialEditorState, {
@@ -143,4 +155,51 @@ test('편집 중 선택이 바뀌면 드래프트가 새 요소로 넘어가지 
   expect(input.value).toBe('0') // EL_TEXT의 left — 드래프트 잔존 없음
   fireEvent.blur(input)
   expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('채우기 색 선택은 선택 요소 전체에 1회 커밋으로 적용된다', () => {
+  const { dispatch, getByRole } = renderPanel({ selectedIds: [EL_TEXT, EL_SHAPE] })
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  fireEvent.click(getByRole('button', { name: '색 #1a56db' }))
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const doc = applies[0]![0].doc as DeckDoc
+  expect(doc.slides[0]!.elements[0]).toMatchObject({ extraStyle: { background: '#1a56db' } })
+  expect(doc.slides[0]!.elements[1]).toMatchObject({ extraStyle: { background: '#1a56db' } })
+})
+
+test('채우기 없음은 background 키를 제거한다', () => {
+  const { dispatch, getByRole } = renderPanel({ selectedIds: [EL_SHAPE] })
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  fireEvent.click(getByRole('button', { name: '채우기 없음' }))
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[1]!
+  expect(el.type !== 'opaque' && 'background' in el.extraStyle).toBe(false)
+})
+
+test('테두리 두께 선택은 기본값으로 border를 합성한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  fireEvent.change(getByLabelText('테두리 두께'), { target: { value: '2' } })
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[1]).toMatchObject({ extraStyle: { border: '2px solid #1f2937' } })
+})
+
+test('테두리가 있으면 스타일·색 컨트롤이 보이고 점선 변경이 동작한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ doc: DOC_STYLED, selectedIds: [EL_BORDERED] })
+  fireEvent.change(getByLabelText('테두리 스타일'), { target: { value: 'dashed' } })
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[0]).toMatchObject({ extraStyle: { border: '1px dashed #000000' } })
+})
+
+test('테두리 없음은 border 키를 제거한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ doc: DOC_STYLED, selectedIds: [EL_BORDERED] })
+  fireEvent.change(getByLabelText('테두리 두께'), { target: { value: '0' } })
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type !== 'opaque' && 'border' in el.extraStyle).toBe(false)
+})
+
+test('인식할 수 없는 테두리 값은 보존 안내를 보여준다', () => {
+  const { getByText } = renderPanel({ doc: DOC_STYLED, selectedIds: [EL_CUSTOM_BORDER] })
+  expect(getByText(/사용자 지정/)).toBeTruthy()
 })

@@ -1,10 +1,21 @@
 import { useState } from 'react'
 import type { Dispatch } from 'react'
 import { MIN_SIZE } from '../canvas/geometry.ts'
-import { setElementFrame, setSlideBg } from '../model/ops.ts'
+import { setElementFrame, setElementStyle, setSlideBg } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import type { Frame } from '../model/types.ts'
+import { ColorPopover } from './ColorPopover.tsx'
+
+const BORDER_PATTERN = /^(\d+)px (solid|dashed) (\S+)$/
+
+/** '1px solid #000' 형태만 인식 — 그 외 값은 null(사용자 지정 보존) */
+function parseBorder(value: string | undefined): { width: number; style: 'solid' | 'dashed'; color: string } | null {
+  if (!value) return null
+  const m = BORDER_PATTERN.exec(value)
+  if (!m) return null
+  return { width: Number(m[1]), style: m[2] as 'solid' | 'dashed', color: m[3]! }
+}
 
 export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispatch: Dispatch<EditorAction> }) {
   const { doc, currentSlideIndex, selectedIds } = state
@@ -38,6 +49,14 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
     )
   }
 
+  const first = selectedKnown[0] ?? null
+  const applyStyle = (patch: Record<string, string | null>) => {
+    let d = doc
+    for (const el of selectedKnown) d = setElementStyle(d, slide.id, el.id, patch)
+    dispatch({ type: 'APPLY_DOC', doc: d })
+  }
+  const border = first ? parseBorder(first.extraStyle['border']) : null
+
   return (
     <aside className="props" aria-label="속성">
       <h2>{selectedKnown.length === 1 ? '요소' : `요소 ${selectedKnown.length}개`}</h2>
@@ -62,7 +81,63 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
           </section>
         )
       })()}
-      {/* 스타일(Task 6~7) 섹션이 여기에 추가된다 */}
+      {first && (
+        <section aria-label="스타일">
+          <div className="prop-row">
+            채우기
+            <ColorPopover
+              label="채우기 색"
+              value={first.extraStyle['background']}
+              onPick={(c) => applyStyle({ background: c })}
+              clearLabel="채우기 없음"
+              onClear={() => applyStyle({ background: null })}
+            />
+          </div>
+          <label className="prop-row">
+            테두리
+            <select
+              aria-label="테두리 두께"
+              value={border ? String(border.width) : '0'}
+              onChange={(e) => {
+                const w = Number(e.target.value)
+                if (w === 0) applyStyle({ border: null })
+                else applyStyle({ border: `${w}px ${border?.style ?? 'solid'} ${border?.color ?? '#1f2937'}` })
+              }}
+            >
+              <option value="0">없음</option>
+              <option value="1">1px</option>
+              <option value="2">2px</option>
+              <option value="4">4px</option>
+            </select>
+          </label>
+          {border && (
+            <>
+              <label className="prop-row">
+                테두리 스타일
+                <select
+                  aria-label="테두리 스타일"
+                  value={border.style}
+                  onChange={(e) => applyStyle({ border: `${border.width}px ${e.target.value} ${border.color}` })}
+                >
+                  <option value="solid">실선</option>
+                  <option value="dashed">점선</option>
+                </select>
+              </label>
+              <div className="prop-row">
+                테두리 색
+                <ColorPopover
+                  label="테두리 색"
+                  value={border.color}
+                  onPick={(c) => applyStyle({ border: `${border.width}px ${border.style} ${c}` })}
+                />
+              </div>
+            </>
+          )}
+          {first.extraStyle['border'] !== undefined && !border && (
+            <p className="prop-note">테두리: 사용자 지정 값 보존됨</p>
+          )}
+        </section>
+      )}
     </aside>
   )
 }
