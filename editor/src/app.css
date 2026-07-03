@@ -69,3 +69,14 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .start-card strong { font-size: 14px; }
 .start-card span { font-size: 12px; color: #6b7280; }
 .start-open { font: inherit; font-size: 13px; padding: 6px 14px; background: none; border: none; color: var(--wd-primary); cursor: pointer; text-decoration: underline; }
+
+.color-popover-root { position: relative; display: inline-flex; }
+.color-trigger { display: inline-flex; align-items: center; gap: 5px; }
+.color-chip { width: 14px; height: 14px; border: 1px solid #d1d5db; border-radius: 3px; display: inline-block; }
+.color-popover { position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); width: 168px; }
+.color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 6px; }
+.color-popover .swatch { width: 22px; height: 22px; padding: 0; border: 1px solid #d1d5db; border-radius: 3px; cursor: pointer; }
+.color-hex { display: flex; gap: 4px; }
+.color-hex input { width: 90px; font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px; }
+.color-hex button, .color-clear { font: inherit; font-size: 12px; padding: 2px 8px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; }
+.color-clear { margin-top: 6px; width: 100%; }
