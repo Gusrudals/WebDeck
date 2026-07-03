@@ -25,3 +25,27 @@ export function execFontSize(px: number): void {
     font.replaceWith(span)
   }
 }
+
+// ---------- 텍스트 도구 포커스 인프라 ----------
+// 포커스를 받는 텍스트 도구(input/select)는 contentEditable의 셀렉션을 잃는다.
+// 도구 포커스 직전에 저장(saveSelection)하고, execCommand 직전에 복원(restoreSelection)한다.
+
+let savedRange: Range | null = null
+
+export function saveSelection(): void {
+  const sel = window.getSelection?.()
+  savedRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null
+}
+
+export function restoreSelection(): void {
+  if (!savedRange) return
+  const sel = window.getSelection?.()
+  if (!sel) return
+  sel.removeAllRanges()
+  sel.addRange(savedRange)
+}
+
+/** 편집 중인 텍스트 상자로 포커스를 되돌린다 — 편집 요소는 동시에 1개뿐 */
+export function focusEditable(): void {
+  document.querySelector<HTMLElement>('.text-editable')?.focus()
+}

@@ -40,7 +40,11 @@ export function TextEditable({ html, onCommit }: { html: string; onCommit: (html
       className="text-editable"
       contentEditable
       suppressContentEditableWarning
-      onBlur={commit}
+      onBlur={(e) => {
+        // 텍스트 도구(크기 입력·hex·드롭다운)로의 포커스 이동은 편집 세션 유지 — 도구가 종료를 책임진다
+        if ((e.relatedTarget as HTMLElement | null)?.closest?.('[data-text-tool]')) return
+        commit()
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           e.preventDefault()
