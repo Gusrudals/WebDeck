@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
 import { alignFrame } from '../canvas/geometry.ts'
 import type { AlignMode } from '../canvas/geometry.ts'
@@ -10,7 +9,6 @@ import {
   moveElementZ,
   removeElement,
   setElementFrame,
-  setSlideBg,
 } from '../model/ops.ts'
 import type { ZDirection } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
@@ -45,8 +43,6 @@ export function Toolbar({
   idGen: () => string
 }) {
   const { doc, currentSlideIndex, selectedIds, editingTextId } = state
-  /** 배경색 피커 조작 중 임시값 — OS 피커 드래그 동안 onChange가 연속 발화하므로 blur 시 1회만 커밋 */
-  const [bgDraft, setBgDraft] = useState<string | null>(null)
   const slide = doc?.slides[currentSlideIndex] ?? null
   const hasDoc = doc !== null && slide !== null
   const hasSelection = hasDoc && selectedIds.length > 0
@@ -98,13 +94,6 @@ export function Toolbar({
     dispatch({ type: 'APPLY_DOC', doc: d, select: [] })
   }
 
-  const changeBg = (value: string) => {
-    if (!doc || !slide) return
-    dispatch({ type: 'APPLY_DOC', doc: setSlideBg(doc, slide.id, value) })
-  }
-
-  const bgValue = slide?.bg && /^#[0-9a-fA-F]{6}$/.test(slide.bg) ? slide.bg : '#ffffff'
-
   return (
     <div className="toolbar" role="toolbar" aria-label="편집 도구">
       <div className="group" aria-label="삽입">
@@ -142,22 +131,6 @@ export function Toolbar({
       </div>
       <div className="group" aria-label="요소">
         <button type="button" disabled={!hasSelection} onClick={removeSelected}>삭제</button>
-      </div>
-      <div className="group" aria-label="슬라이드">
-        <label className="bg-label">
-          배경
-          <input
-            type="color"
-            aria-label="배경색"
-            disabled={!hasDoc}
-            value={bgDraft ?? bgValue}
-            onChange={(e) => setBgDraft(e.target.value)}
-            onBlur={() => {
-              if (bgDraft !== null && bgDraft !== bgValue) changeBg(bgDraft)
-              setBgDraft(null)
-            }}
-          />
-        </label>
       </div>
     </div>
   )

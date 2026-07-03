@@ -11,6 +11,7 @@ import { checkRoundTrip } from './model/roundtrip.ts'
 import { serializeWebdeck } from './model/serialize.ts'
 import type { DeckDoc } from './model/types.ts'
 import { StartScreen } from './panels/StartScreen.tsx'
+import { PropertiesPanel } from './panels/PropertiesPanel.tsx'
 import { SlidePanel } from './panels/SlidePanel.tsx'
 import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState, isDirty } from './state/store.ts'
@@ -195,6 +196,7 @@ export function App() {
       ) : (
         <StartScreen onStart={handleStart} onOpen={handleOpen} />
       )}
+      <PropertiesPanel state={state} dispatch={dispatch} />
     </div>
   )
 }
