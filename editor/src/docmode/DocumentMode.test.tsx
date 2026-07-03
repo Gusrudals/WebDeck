@@ -18,11 +18,11 @@ const PLAIN_HTML = `<!DOCTYPE html>
 </html>`
 
 /** DOMParser 문서를 편집 표면으로 주입하고 iframe load를 수동 트리거한다 (happy-dom은 srcdoc을 로드하지 않음) */
-function setup(over: Partial<DocModeFile> = {}, onOpen = vi.fn()) {
-  const editDoc = new DOMParser().parseFromString(PLAIN_HTML, 'text/html')
+function setup(over: Partial<DocModeFile> = {}, onOpen = vi.fn(), { skipLoad = false } = {}) {
+  const editDoc = new DOMParser().parseFromString(over.html ?? PLAIN_HTML, 'text/html')
   const file: DocModeFile = { name: 'plain.html', handle: null, html: PLAIN_HTML, ...over }
   render(<DocumentMode file={file} onOpen={onOpen} getEditDocument={() => editDoc} />)
-  fireEvent.load(screen.getByTitle('문서 편집'))
+  if (!skipLoad) fireEvent.load(screen.getByTitle('문서 편집'))
   return { editDoc, onOpen }
 }
 
@@ -127,4 +127,30 @@ test('dirty가 아니면 확인 없이 onOpen을 부른다', async () => {
   expect(confirmSpy).not.toHaveBeenCalled()
   expect(onOpen).toHaveBeenCalled()
   confirmSpy.mockRestore()
+})
+
+function isDisabled(name: string) {
+  return (screen.getByRole('button', { name }) as HTMLButtonElement).disabled
+}
+
+test('load 전에는 저장·실행 취소 버튼이 비활성화된다', () => {
+  setup({}, vi.fn(), { skipLoad: true })
+  expect(isDisabled('저장')).toBe(true)
+  expect(isDisabled('다른 이름으로 저장')).toBe(true)
+  expect(isDisabled('실행 취소')).toBe(true)
+  expect(isDisabled('다시 실행')).toBe(true)
+  expect(isDisabled('열기')).toBe(false)
+  fireEvent.load(screen.getByTitle('문서 편집'))
+  expect(isDisabled('저장')).toBe(false)
+  expect(isDisabled('다른 이름으로 저장')).toBe(false)
+  expect(isDisabled('실행 취소')).toBe(false)
+  expect(isDisabled('다시 실행')).toBe(false)
+})
+
+test('원본 body에 contenteditable이 이미 있어도 dirty 추적이 동작한다', () => {
+  const htmlWithContentEditable = PLAIN_HTML.replace('<body>', '<body contenteditable="true">')
+  const { editDoc } = setup({ html: htmlWithContentEditable })
+  expect(editDoc.body.getAttribute('contenteditable')).toBe('true')
+  fireEvent.input(editDoc.body)
+  expect(screen.getByTitle('저장되지 않은 변경')).toBeTruthy()
 })

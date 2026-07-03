@@ -24,6 +24,12 @@ describe('extractDoctype', () => {
   test('DOCTYPE이 없으면 null', () => {
     expect(extractDoctype('<html><body><p>x</p></body></html>')).toBeNull()
   })
+
+  test('DOCTYPE 앞의 주석을 넘어 원문을 추출한다', () => {
+    expect(
+      extractDoctype('<!-- saved from url=(0014)about:internet -->\n<!DOCTYPE html><html></html>'),
+    ).toBe('<!DOCTYPE html>')
+  })
 })
 
 describe('serializeEditedDocument', () => {
@@ -70,5 +76,21 @@ describe('serializeEditedDocument', () => {
     const doc = makeDoc(SOURCE)
     doc.querySelector('h1')!.textContent = '수정된 제목'
     expect(serializeEditedDocument(doc, null)).toContain('수정된 제목')
+  })
+
+  test('문서 수준 주석이 저장물에 보존된다', () => {
+    const doc = makeDoc(`<!--license-->\n${SOURCE}`)
+    const out = serializeEditedDocument(doc, '<!DOCTYPE html>')
+    expect(out).toContain('<!--license-->')
+    expect(out.indexOf('<!--license-->')).toBeLessThan(out.indexOf('<html'))
+  })
+
+  test('원문 추출 실패 시 doctype 노드에서 재구성한다', () => {
+    const doc = makeDoc(`${LEGACY_DOCTYPE}\n<html><body><p>x</p></body></html>`)
+    const out = serializeEditedDocument(doc, null)
+    // 파서가 doctype 이름을 소문자로 정규화하므로 재구성된 선언은 소문자 html이 된다
+    expect(
+      out.startsWith('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">'),
+    ).toBe(true)
   })
 })

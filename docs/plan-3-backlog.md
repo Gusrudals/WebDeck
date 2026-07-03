@@ -34,3 +34,11 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 
 - 검증기 `@import` 검사가 단순 부분 문자열 매치 (CSS 주석 내 오탐 가능, v1 허용)
 - CLI 내부 오류 출력에서 비-Error throw 시 `undefined` 출력 가능
+
+## 문서 모드 이월 (최종 리뷰에서 백로그 판정)
+
+- 문서 모드에서 Cmd+S/Shift+Cmd+S 미지원 — 브라우저 '페이지 저장' 다이얼로그로 떨어짐. DocumentMode에서 window+편집 문서 양쪽에 핸들러 등록 필요
+- 비 UTF-8(EUC-KR 레거시) 파일은 mojibake로 열리고 저장 시 원본이 깨진 채 덮어써짐 — `<meta charset>`이 utf-8이 아니면 경고 배너 검토
+- `<meta http-equiv="refresh">`로 iframe이 자기 내비게이션하면 저장이 무피드백 no-op (contentDocument null·희귀)
+- frameset 문서는 body가 frameset이라 편집 부산물 속성이 저장물에 잔존 (초희귀)
+- 커버리지 갭: Save As 취소 시 dirty 유지, 핸들 교체 후 연속 저장(리뷰 프로브로 정상 확인됨), 연속 일반 HTML 열기 seq 재마운트 직접 테스트

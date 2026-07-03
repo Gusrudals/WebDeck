@@ -17,10 +17,16 @@ interface DocumentModeProps {
   getEditDocument?: (frame: HTMLIFrameElement | null) => Document | null
 }
 
-const defaultGetEditDocument = (frame: HTMLIFrameElement | null) => frame?.contentDocument ?? null
+const defaultGetEditDocument = (frame: HTMLIFrameElement | null) => {
+  const d = frame?.contentDocument ?? null
+  // srcdoc 로드 전의 iframe은 빈 about:blank 문서를 노출한다 — 원본을 빈 문서로 덮어쓰지 않도록 제외
+  return d && d.URL !== 'about:blank' ? d : null
+}
 
 export function DocumentMode({ file, onOpen, getEditDocument = defaultGetEditDocument }: DocumentModeProps) {
   const frameRef = useRef<HTMLIFrameElement | null>(null)
+  const preparedRef = useRef(false)
+  const [ready, setReady] = useState(false)
   const [fileName, setFileName] = useState(file.name)
   const [handle, setHandle] = useState(file.handle)
   const [dirty, setDirty] = useState(false)
@@ -40,10 +46,13 @@ export function DocumentMode({ file, onOpen, getEditDocument = defaultGetEditDoc
 
   /** iframe 로드 후 본문을 편집 가능하게 만든다 — load가 중복 발생해도 준비는 1회만 */
   function handleFrameLoad() {
+    if (preparedRef.current) return
     const d = editDoc()
-    if (!d?.body || d.body.getAttribute('contenteditable') === 'true') return
+    if (!d?.body) return
+    preparedRef.current = true
     d.body.setAttribute('contenteditable', 'true')
     d.addEventListener('input', () => setDirty(true))
+    setReady(true)
   }
 
   function serialize(): string | null {
@@ -120,10 +129,10 @@ export function DocumentMode({ file, onOpen, getEditDocument = defaultGetEditDoc
         <h1>WebDeck 에디터</h1>
         <span className="docmode-badge">문서 모드 — 일반 HTML</span>
         <button type="button" onClick={handleOpenClick}>열기</button>
-        <button type="button" onClick={handleSave}>저장</button>
-        <button type="button" onClick={handleSaveAs}>다른 이름으로 저장</button>
-        <button type="button" onClick={() => execHistory('undo')}>실행 취소</button>
-        <button type="button" onClick={() => execHistory('redo')}>다시 실행</button>
+        <button type="button" onClick={handleSave} disabled={!ready}>저장</button>
+        <button type="button" onClick={handleSaveAs} disabled={!ready}>다른 이름으로 저장</button>
+        <button type="button" onClick={() => execHistory('undo')} disabled={!ready}>실행 취소</button>
+        <button type="button" onClick={() => execHistory('redo')} disabled={!ready}>다시 실행</button>
         <span className="file-name">
           {fileName}
           {dirty && <span className="dirty-dot" title="저장되지 않은 변경"> ●</span>}
