@@ -130,3 +130,17 @@ test('다중 선택 시 위치·크기 섹션은 없다', () => {
   const { queryByLabelText } = renderPanel({ selectedIds: [EL_TEXT, EL_SHAPE] })
   expect(queryByLabelText('X')).toBeNull()
 })
+
+test('편집 중 선택이 바뀌면 드래프트가 새 요소로 넘어가지 않는다', () => {
+  const dispatch = vi.fn()
+  const { getByLabelText, rerender } = render(
+    <PropertiesPanel state={makeState({ selectedIds: [EL_SHAPE] })} dispatch={dispatch} />,
+  )
+  fireEvent.change(getByLabelText('X'), { target: { value: '999' } })
+  // blur 없이 선택 변경 (캔버스 preventDefault로 blur가 억제되는 시나리오)
+  rerender(<PropertiesPanel state={makeState({ selectedIds: [EL_TEXT] })} dispatch={dispatch} />)
+  const input = getByLabelText('X') as HTMLInputElement
+  expect(input.value).toBe('0') // EL_TEXT의 left — 드래프트 잔존 없음
+  fireEvent.blur(input)
+  expect(dispatch).not.toHaveBeenCalled()
+})

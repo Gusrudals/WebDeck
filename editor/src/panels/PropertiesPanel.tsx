@@ -55,10 +55,10 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
         }
         return (
           <section aria-label="위치와 크기">
-            <NumberField label="X" value={el.frame.left} onCommit={(v) => commitFrame({ left: v })} />
-            <NumberField label="Y" value={el.frame.top} onCommit={(v) => commitFrame({ top: v })} />
-            <NumberField label="너비" value={el.frame.width} onCommit={(v) => commitFrame({ width: v })} />
-            <NumberField label="높이" value={el.frame.height} onCommit={(v) => commitFrame({ height: v })} />
+            <NumberField key={`${el.id}-x`} label="X" value={el.frame.left} onCommit={(v) => commitFrame({ left: v })} />
+            <NumberField key={`${el.id}-y`} label="Y" value={el.frame.top} onCommit={(v) => commitFrame({ top: v })} />
+            <NumberField key={`${el.id}-w`} label="너비" value={el.frame.width} onCommit={(v) => commitFrame({ width: v })} />
+            <NumberField key={`${el.id}-h`} label="높이" value={el.frame.height} onCommit={(v) => commitFrame({ height: v })} />
           </section>
         )
       })()}
