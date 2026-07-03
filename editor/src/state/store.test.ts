@@ -20,6 +20,8 @@ function doc(slideCount = 3, opaquePerSlide = 0): DeckDoc {
     slides: Array.from({ length: slideCount }, (_, i) => ({
       id: `s-${i}`,
       bg: null,
+      transition: null,
+      notes: '',
       extraAttrs: {},
       extraClasses: [],
       elements: Array.from({ length: opaquePerSlide }, (_, j) => ({

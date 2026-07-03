@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { WebdeckParseError, parseWebdeck } from './parse.ts'
+import { checkRoundTrip } from './roundtrip.ts'
+import { serializeWebdeck } from './serialize.ts'
 
 const TEMPLATES = import.meta.dirname ? `${import.meta.dirname}/../../../templates/` : fileURLToPath(new URL('../../../templates/', import.meta.url))
 
@@ -80,5 +82,56 @@ describe('parseWebdeck', () => {
       expect(doc.slides.length).toBeGreaterThanOrEqual(2)
       expect(doc.slides.flatMap((s) => s.elements).every((e) => e.type !== 'opaque')).toBe(true)
     }
+  })
+})
+
+const P6_WRAP = (section: string) => `<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+${section}
+</main></body></html>`
+
+describe('v1.1 슬라이드 속성 (transition·notes)', () => {
+  test('data-transition/data-notes를 1급 필드로 추출하고 extraAttrs에 남기지 않는다', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide" data-transition="fade" data-notes="발표 멘트"></section>'))
+    const s = doc.slides[0]!
+    expect(s.transition).toBe('fade')
+    expect(s.notes).toBe('발표 멘트')
+    expect(s.extraAttrs['data-transition']).toBeUndefined()
+    expect(s.extraAttrs['data-notes']).toBeUndefined()
+  })
+
+  test('속성이 없으면 transition은 null, notes는 빈 문자열', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide"></section>'))
+    expect(doc.slides[0]!.transition).toBeNull()
+    expect(doc.slides[0]!.notes).toBe('')
+  })
+
+  test('미지원 transition 값은 extraAttrs에 원문 보존된다', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide" data-transition="zoom"></section>'))
+    const s = doc.slides[0]!
+    expect(s.transition).toBeNull()
+    expect(s.extraAttrs['data-transition']).toBe('zoom')
+  })
+
+  test('transition·notes는 왕복 보존된다 (직렬화 출력 포함)', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide" data-transition="push" data-notes="한 줄 &quot;멘트&quot;"></section>'))
+    expect(checkRoundTrip(doc)).toBeNull()
+    const html = serializeWebdeck(doc)
+    expect(html).toContain('data-transition="push"')
+    expect(html).toContain('data-notes="한 줄 &quot;멘트&quot;"')
+  })
+
+  test('notes가 빈 문자열이면 data-notes를 출력하지 않는다', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide"></section>'))
+    expect(serializeWebdeck(doc)).not.toContain('data-notes')
+    expect(serializeWebdeck(doc)).not.toContain('data-transition')
+  })
+
+  test('미지원 transition 값도 왕복 보존된다', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide" data-transition="zoom"></section>'))
+    expect(checkRoundTrip(doc)).toBeNull()
+    expect(serializeWebdeck(doc)).toContain('data-transition="zoom"')
   })
 })

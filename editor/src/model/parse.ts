@@ -78,13 +78,18 @@ export function parseWebdeck(html: string, options: ParseOptions = {}): DeckDoc 
 
 function parseSlide(section: Element, idGen: () => string): Slide {
   const id = idGen()
+  const rawTransition = section.getAttribute('data-transition')
+  const transition = rawTransition === 'fade' || rawTransition === 'push' ? rawTransition : null
+  const notes = section.getAttribute('data-notes') ?? ''
   const extraAttrs: Record<string, string> = {}
   for (const attr of Array.from(section.attributes)) {
-    if (attr.name === 'class' || attr.name === 'data-bg') continue
+    if (attr.name === 'class' || attr.name === 'data-bg' || attr.name === 'data-notes') continue
+    // 유효한 transition만 1급 필드로 승격 — 미지원 값은 extraAttrs에 원문 보존
+    if (attr.name === 'data-transition' && transition !== null) continue
     extraAttrs[attr.name] = attr.value
   }
   const elements = Array.from(section.children).map((el) => parseElement(el, idGen))
-  return { id, bg: section.getAttribute('data-bg'), extraAttrs, extraClasses: extraClassesOf(section, ['slide']), elements }
+  return { id, bg: section.getAttribute('data-bg'), transition, notes, extraAttrs, extraClasses: extraClassesOf(section, ['slide']), elements }
 }
 
 function parseElement(el: Element, idGen: () => string): SlideElement {

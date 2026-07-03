@@ -107,7 +107,7 @@ export function moveElementZ(doc: DeckDoc, slideId: string, elementId: string, d
 // ---------- 슬라이드 커맨드 ----------
 
 export function addSlide(doc: DeckDoc, idGen: () => string, index?: number): DeckDoc {
-  const slide: Slide = { id: idGen(), bg: '#ffffff', extraAttrs: {}, extraClasses: [], elements: [] }
+  const slide: Slide = { id: idGen(), bg: '#ffffff', transition: null, notes: '', extraAttrs: {}, extraClasses: [], elements: [] }
   const slides = doc.slides.slice()
   slides.splice(index ?? slides.length, 0, slide)
   return { ...doc, slides }
@@ -127,6 +127,8 @@ export function duplicateSlide(doc: DeckDoc, slideId: string, idGen: () => strin
   const copy: Slide = {
     id: idGen(),
     bg: src.bg,
+    transition: src.transition,
+    notes: src.notes,
     extraAttrs: { ...src.extraAttrs },
     extraClasses: [...src.extraClasses],
     elements: src.elements.map((el) =>
@@ -153,6 +155,14 @@ export function moveSlide(doc: DeckDoc, fromIndex: number, toIndex: number): Dec
 
 export function setSlideBg(doc: DeckDoc, slideId: string, bg: string | null): DeckDoc {
   return mapSlide(doc, slideId, (slide) => ({ ...slide, bg }))
+}
+
+export function setSlideTransition(doc: DeckDoc, slideId: string, transition: Slide['transition']): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => ({ ...slide, transition }))
+}
+
+export function setSlideNotes(doc: DeckDoc, slideId: string, notes: string): DeckDoc {
+  return mapSlide(doc, slideId, (slide) => ({ ...slide, notes }))
 }
 
 // ---------- 팩토리 ----------

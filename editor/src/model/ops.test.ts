@@ -13,6 +13,8 @@ import {
   removeSlide,
   setElementFrame,
   setElementStyle,
+  setSlideNotes,
+  setSlideTransition,
   setSlideBg,
   setTextHtml,
 } from './ops.ts'
@@ -24,6 +26,8 @@ function fixture(): DeckDoc {
   const slide: Slide = {
     id: gen(), // wd-1
     bg: '#ffffff',
+    transition: null,
+    notes: '',
     extraAttrs: {},
     extraClasses: ['intro'],
     elements: [
@@ -154,5 +158,41 @@ describe('setElementStyle', () => {
     setElementStyle(doc, slide.id, el.id, { opacity: '0.5' })
     if (el.type === 'opaque') throw new Error('unexpected')
     expect(el.extraStyle).toEqual({})
+  })
+})
+
+const TWO_SLIDE_DOC = `<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"></section>
+<section class="slide"></section>
+</main></body></html>`
+
+describe('setSlideTransition / setSlideNotes', () => {
+  test('해당 슬라이드만 갱신하고 새 문서를 반환한다', () => {
+    const doc = parseWebdeck(TWO_SLIDE_DOC)
+    const id = doc.slides[0]!.id
+    const d1 = setSlideTransition(doc, id, 'fade')
+    expect(d1).not.toBe(doc)
+    expect(d1.slides[0]!.transition).toBe('fade')
+    expect(d1.slides[1]!.transition).toBeNull()
+    const d2 = setSlideNotes(d1, id, '멘트')
+    expect(d2.slides[0]!.notes).toBe('멘트')
+  })
+
+  test('duplicateSlide는 transition·notes를 복제한다', () => {
+    const base = parseWebdeck(TWO_SLIDE_DOC)
+    const id = base.slides[0]!.id
+    const doc = setSlideNotes(setSlideTransition(base, id, 'push'), id, 'n')
+    const dup = duplicateSlide(doc, id, createIdGen('d'))
+    expect(dup.slides[1]!.transition).toBe('push')
+    expect(dup.slides[1]!.notes).toBe('n')
+  })
+
+  test('addSlide 새 슬라이드는 transition null·notes 빈 문자열', () => {
+    const doc = addSlide(parseWebdeck(TWO_SLIDE_DOC), createIdGen('a'))
+    expect(doc.slides.at(-1)!.transition).toBeNull()
+    expect(doc.slides.at(-1)!.notes).toBe('')
   })
 })

@@ -38,10 +38,12 @@ function attrsString(attrs: Record<string, string>): string {
 function serializeSlide(slide: Slide): string {
   const cls = escapeAttr(['slide', ...slide.extraClasses].join(' '))
   const bg = slide.bg === null ? '' : ` data-bg="${escapeAttr(slide.bg)}"`
+  const transition = slide.transition === null ? '' : ` data-transition="${escapeAttr(slide.transition)}"`
+  const notes = slide.notes === '' ? '' : ` data-notes="${escapeAttr(slide.notes)}"`
   const extra = attrsString(slide.extraAttrs)
   const els = slide.elements.map((el) => `    ${serializeElement(el)}`).join('\n')
   const body = els ? `\n${els}\n  ` : '\n  '
-  return `  <section class="${cls}"${bg}${extra}>${body}</section>`
+  return `  <section class="${cls}"${bg}${transition}${notes}${extra}>${body}</section>`
 }
 
 function elementClass(el: KnownElement): string {

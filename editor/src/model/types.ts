@@ -47,6 +47,10 @@ export type KnownElement = TextElement | ImageElement | ShapeElement
 export interface Slide {
   id: string
   bg: string | null
+  /** 발표 전환 효과 — data-transition. fade/push만 1급, 그 외 값은 extraAttrs에 보존 */
+  transition: 'fade' | 'push' | null
+  /** 슬라이드 노트 — data-notes 평문 (없으면 '') */
+  notes: string
   /** class/data-bg 외의 section 속성 — 왕복 보존 */
   extraAttrs: Record<string, string>
   /** slide 외의 class 토큰 — 왕복 보존 */

@@ -29,6 +29,8 @@ describe('SlideView', () => {
     const slide = {
       id: 's',
       bg: null,
+      transition: null,
+      notes: '',
       extraAttrs: {},
       extraClasses: [],
       elements: [{ type: 'opaque' as const, id: 'o', html: '<div data-x="1">보존된 위젯</div>' }],
