@@ -12,9 +12,11 @@ import {
   removeElement,
   removeSlide,
   setElementFrame,
+  setElementStyle,
   setSlideBg,
   setTextHtml,
 } from './ops.ts'
+import { parseWebdeck } from './parse.ts'
 import type { DeckDoc, Slide } from './types.ts'
 
 function fixture(): DeckDoc {
@@ -108,5 +110,49 @@ describe('슬라이드 커맨드', () => {
     const doc = fixture()
     expect(() => moveSlide(doc, 0, 5)).toThrow('범위를 벗어났습니다')
     expect(() => moveSlide(doc, -1, 0)).toThrow('범위를 벗어났습니다')
+  })
+})
+
+describe('setElementStyle', () => {
+  test('새 키를 추가하고 기존 키와 순서를 유지한다', () => {
+    const doc = parseWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:10px; height:10px; background:red;"></div></section>
+</main></body></html>`)
+    const slide = doc.slides[0]!
+    const el = slide.elements[0]!
+    const out = setElementStyle(doc, slide.id, el.id, { border: '1px solid #000' })
+    const outEl = out.slides[0]!.elements[0]!
+    if (outEl.type === 'opaque') throw new Error('unexpected')
+    expect(outEl.extraStyle).toEqual({ background: 'red', border: '1px solid #000' })
+    expect(Object.keys(outEl.extraStyle)).toEqual(['background', 'border'])
+  })
+
+  test('null 값은 키를 삭제한다', () => {
+    const doc = parseWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:10px; height:10px; background:red;"></div></section>
+</main></body></html>`)
+    const slide = doc.slides[0]!
+    const el = slide.elements[0]!
+    const out = setElementStyle(doc, slide.id, el.id, { background: null })
+    const outEl = out.slides[0]!.elements[0]!
+    if (outEl.type === 'opaque') throw new Error('unexpected')
+    expect(outEl.extraStyle).toEqual({})
+  })
+
+  test('원본 doc는 불변이다', () => {
+    const doc = parseWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:10px; height:10px;"></div></section>
+</main></body></html>`)
+    const slide = doc.slides[0]!
+    const el = slide.elements[0]!
+    setElementStyle(doc, slide.id, el.id, { opacity: '0.5' })
+    if (el.type === 'opaque') throw new Error('unexpected')
+    expect(el.extraStyle).toEqual({})
   })
 })

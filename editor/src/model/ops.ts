@@ -53,6 +53,23 @@ export function setTextHtml(doc: DeckDoc, slideId: string, elementId: string, ht
   })
 }
 
+/** extraStyle 패치 — 값 null은 해당 속성 제거. frame 속성(left/top/width/height)은 다루지 않는다 */
+export function setElementStyle(
+  doc: DeckDoc,
+  slideId: string,
+  elementId: string,
+  patch: Record<string, string | null>,
+): DeckDoc {
+  return mapKnownElement(doc, slideId, elementId, (el) => {
+    const extraStyle: Record<string, string> = { ...el.extraStyle }
+    for (const [prop, value] of Object.entries(patch)) {
+      if (value === null) delete extraStyle[prop]
+      else extraStyle[prop] = value
+    }
+    return { ...el, extraStyle }
+  })
+}
+
 export function addElement(doc: DeckDoc, slideId: string, element: SlideElement, index?: number): DeckDoc {
   return mapSlide(doc, slideId, (slide) => {
     const elements = slide.elements.slice()
