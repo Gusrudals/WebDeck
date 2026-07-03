@@ -91,6 +91,24 @@ describe('setLineHeight', () => {
     editable.remove()
   })
 
+  test('두 문단에 걸친 셀렉션은 두 블록 모두에 적용된다', () => {
+    const editable = document.createElement('div')
+    editable.className = 'text-editable'
+    editable.innerHTML = '<p>하나</p><p>둘</p>'
+    document.body.appendChild(editable)
+    const ps = editable.querySelectorAll('p')
+    const range = document.createRange()
+    range.setStart(ps[0]!.firstChild!, 0)
+    range.setEnd(ps[1]!.firstChild!, 1)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+    setLineHeight(2)
+    expect((ps[0] as HTMLElement).style.lineHeight).toBe('2')
+    expect((ps[1] as HTMLElement).style.lineHeight).toBe('2')
+    editable.remove()
+  })
+
   test('편집 영역 밖 셀렉션이면 아무것도 하지 않는다', () => {
     const div = document.createElement('div')
     div.innerHTML = '<p>외부</p>'

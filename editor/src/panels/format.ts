@@ -89,8 +89,5 @@ export function setLineHeight(value: number): void {
   const editable = anchorEl?.closest('.text-editable')
   if (!editable) return
   const blocks = Array.from(editable.querySelectorAll<HTMLElement>('p, li'))
-  // happy-dom 등 intersectsNode 미구현 환경은 포함 관계로 폴백
-  const intersects = (b: HTMLElement) =>
-    typeof range.intersectsNode === 'function' ? range.intersectsNode(b) : b.contains(anchor) || b === anchorEl
-  for (const b of blocks.filter(intersects)) b.style.lineHeight = String(value)
+  for (const b of blocks.filter((blk) => range.intersectsNode(blk))) b.style.lineHeight = String(value)
 }
