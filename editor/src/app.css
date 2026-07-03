@@ -20,7 +20,6 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 
 .side { background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 12px; }
 .canvas-area { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.empty-state { color: #6b7280; font-size: 14px; }
 
 .slide-view { position: relative; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); flex: none; font-family: var(--wd-font-body); color: var(--wd-text); }
 .slide-view .el-text p { margin: 0; }
@@ -61,3 +60,12 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 
 .dirty-dot { color: var(--wd-primary); }
 .error button { margin-left: 6px; font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid #b91c1c; border-radius: 4px; background: #fff; color: #b91c1c; cursor: pointer; }
+
+.start-screen { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.start-screen h2 { margin: 0; font-size: 18px; color: #374151; }
+.start-cards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.start-card { display: flex; flex-direction: column; gap: 6px; width: 180px; padding: 20px 16px; font: inherit; text-align: left; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; }
+.start-card:hover { border-color: var(--wd-primary); box-shadow: 0 2px 8px rgba(26, 86, 219, 0.12); }
+.start-card strong { font-size: 14px; }
+.start-card span { font-size: 12px; color: #6b7280; }
+.start-open { font: inherit; font-size: 13px; padding: 6px 14px; background: none; border: none; color: var(--wd-primary); cursor: pointer; text-decoration: underline; }

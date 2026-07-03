@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from './App.tsx'
 
+// happy-dom에는 window.confirm이 없어 vi.spyOn 대상이 될 프로퍼티가 없다 — 채워둔다
+if (!window.confirm) window.confirm = () => true
+
 const VALID_DOC = `<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
 <head><meta charset="utf-8"><title>테스트 문서</title><style>.el{position:absolute}</style></head>
@@ -29,7 +32,8 @@ afterEach(() => {
 test('앱 셸이 렌더링된다', () => {
   render(<App />)
   expect(screen.getByRole('heading', { name: 'WebDeck 에디터' })).toBeTruthy()
-  expect(screen.getByText('문서를 열어 시작하세요')).toBeTruthy()
+  expect(screen.getByText('시작하기')).toBeTruthy()
+  expect(screen.getByRole('button', { name: /빈 문서/ })).toBeTruthy()
 })
 
 test('문서를 열면 캔버스·패널·opaque 배지가 나타난다', async () => {
@@ -159,4 +163,44 @@ test('다른 이름으로 저장 피커 취소는 아무 것도 바꾸지 않는
   expect(screen.getByText('report.html')).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
   delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker
+})
+
+test('새 문서 버튼은 빈 문서로 시작하고 dirty 상태다', async () => {
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '새 문서' }))
+  expect(await screen.findByText('제목 없음.html')).toBeTruthy()
+  expect(screen.getByTitle('저장되지 않은 변경')).toBeTruthy()
+  expect(screen.getAllByRole('button', { name: /^슬라이드 \d/ }).length).toBeGreaterThanOrEqual(1)
+})
+
+test('시작 화면에서 템플릿을 골라 시작한다', async () => {
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: /업무 보고/ }))
+  expect(await screen.findByText('제목 없음.html')).toBeTruthy()
+  expect(screen.getAllByRole('button', { name: /^슬라이드 \d/ }).length).toBeGreaterThanOrEqual(2)
+})
+
+test('dirty 문서에서 새 문서는 확인을 요구하고 거절 시 유지한다', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '새 문서' }))
+  await screen.findByText('제목 없음.html')
+  // 새 문서는 항상 dirty — 다시 새 문서를 눌러 가드를 확인
+  await userEvent.click(screen.getByRole('button', { name: '새 문서' }))
+  expect(confirmSpy).toHaveBeenCalled()
+  expect(screen.getByText('제목 없음.html')).toBeTruthy()
+  confirmSpy.mockRestore()
+})
+
+test('dirty 문서에서 열기도 확인을 요구한다', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  const picker = vi.fn()
+  ;(window as unknown as { showOpenFilePicker?: () => Promise<unknown[]> }).showOpenFilePicker = picker
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '새 문서' }))
+  await screen.findByText('제목 없음.html')
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  expect(confirmSpy).toHaveBeenCalled()
+  expect(picker).not.toHaveBeenCalled()
+  confirmSpy.mockRestore()
 })

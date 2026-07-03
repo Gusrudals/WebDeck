@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
 import { downloadHtml, openHtmlFile, saveAsHtmlFile, saveToHandle } from './file/fileAccess.ts'
 import type { SaveAsResult } from './file/fileAccess.ts'
+import { TEMPLATES } from './file/templates.ts'
 import { createIdGen } from './model/id.ts'
 import { canRedo, canUndo } from './model/history.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
@@ -9,6 +10,7 @@ import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts
 import { checkRoundTrip } from './model/roundtrip.ts'
 import { serializeWebdeck } from './model/serialize.ts'
 import type { DeckDoc } from './model/types.ts'
+import { StartScreen } from './panels/StartScreen.tsx'
 import { SlidePanel } from './panels/SlidePanel.tsx'
 import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState, isDirty } from './state/store.ts'
@@ -26,7 +28,25 @@ export function App() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [state])
 
+  /** 미저장 변경이 있으면 진행 여부를 묻는다 — dirty가 아니면 confirm을 띄우지 않는다 */
+  function confirmDiscard(): boolean {
+    return !isDirty(state) || window.confirm('저장하지 않은 변경이 있습니다. 계속하면 사라집니다. 계속할까요?')
+  }
+
+  function handleStart(key: string) {
+    if (!confirmDiscard()) return
+    const template = TEMPLATES.find((t) => t.key === key)
+    if (!template) return
+    try {
+      const doc = parseWebdeck(template.html)
+      dispatch({ type: 'START_DOC', doc, fileName: '제목 없음.html' })
+    } catch {
+      dispatch({ type: 'OPEN_ERROR', message: '템플릿을 불러올 수 없습니다' })
+    }
+  }
+
   async function handleOpen() {
+    if (!confirmDiscard()) return
     let opened
     try {
       opened = await openHtmlFile()
@@ -110,6 +130,7 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <h1>WebDeck 에디터</h1>
+        <button type="button" onClick={() => handleStart('minimal')}>새 문서</button>
         <button type="button" onClick={handleOpen}>열기</button>
         <button type="button" disabled={!state.doc} onClick={handleSave}>저장</button>
         <button type="button" disabled={!state.doc} onClick={handleSaveAs}>다른 이름으로 저장</button>
@@ -172,9 +193,7 @@ export function App() {
           dispatch={dispatch}
         />
       ) : (
-        <main className="canvas-area">
-          <p className="empty-state">문서를 열어 시작하세요</p>
-        </main>
+        <StartScreen onStart={handleStart} onOpen={handleOpen} />
       )}
     </div>
   )
