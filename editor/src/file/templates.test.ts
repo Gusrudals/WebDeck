@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { parseWebdeck } from '../model/parse.ts'
 import { checkRoundTrip } from '../model/roundtrip.ts'
+import { RUNTIME_SCRIPT } from '../model/runtime.ts'
 import { TEMPLATES } from './templates.ts'
 
 describe('내장 템플릿', () => {
@@ -22,6 +23,12 @@ describe('내장 템플릿', () => {
       expect(doc.slides.length, t.key).toBeGreaterThanOrEqual(1)
       expect(t.label.length, t.key).toBeGreaterThan(0)
       expect(checkRoundTrip(doc), t.key).toBeNull()
+    }
+  })
+
+  test('모든 템플릿은 최신 런타임을 바이트 단위로 내장한다', () => {
+    for (const t of TEMPLATES) {
+      expect(t.html.includes(RUNTIME_SCRIPT), t.key).toBe(true)
     }
   })
 })

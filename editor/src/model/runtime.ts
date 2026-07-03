@@ -1,61 +1,9 @@
-<!DOCTYPE html>
-<html lang="ko" data-webdeck-version="1">
-<head>
-<meta charset="utf-8">
-<title>WebDeck 문서</title>
-<style>
-  :root {
-    --wd-primary: #1a56db;
-    --wd-accent: #e8f0fe;
-    --wd-text: #1f2937;
-    --wd-muted: #6b7280;
-    --wd-font-heading: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
-    --wd-font-body: "Pretendard", "Malgun Gothic", "맑은 고딕", sans-serif;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: #e5e7eb; font-family: var(--wd-font-body); color: var(--wd-text); }
-  .deck { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; }
-  .slide {
-    position: relative; width: 1280px; height: 720px; flex: none;
-    background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    print-color-adjust: exact; -webkit-print-color-adjust: exact;
-  }
-  .el { position: absolute; }
-  .el-text p { margin: 0; }
-  .el-text ul, .el-text ol { margin: 0; padding-left: 1.2em; }
-  @media print {
-    body { background: none; }
-    .deck { display: block; padding: 0; }
-    .slide { box-shadow: none; page-break-after: always; }
-  }
-  @page { size: 1280px 720px; margin: 0; }
-</style>
-</head>
-<body>
-<main class="deck" data-slide-width="1280" data-slide-height="720">
+import type { DeckDoc } from './types.ts'
 
-  <section class="slide" data-bg="#ffffff">
-    <div class="el el-shape" data-shape="rect" style="left:0px; top:600px; width:1280px; height:120px; background:var(--wd-accent);"></div>
-    <div class="el el-text" style="left:96px; top:240px; width:1088px; height:140px;">
-      <p><strong><span style="font-size:54px;">문서 제목</span></strong></p>
-    </div>
-    <div class="el el-text" style="left:96px; top:400px; width:1088px; height:60px;">
-      <p><span style="font-size:24px; color:var(--wd-muted);">부제목 · 부서명 · 2026. 07.</span></p>
-    </div>
-  </section>
+export const RUNTIME_VERSION = 2
 
-  <section class="slide" data-bg="#ffffff">
-    <div class="el el-text" style="left:96px; top:64px; width:1088px; height:80px;">
-      <p><strong><span style="font-size:36px;">섹션 제목</span></strong></p>
-    </div>
-    <div class="el el-shape" data-shape="rect" style="left:96px; top:150px; width:64px; height:6px; background:var(--wd-primary);"></div>
-    <div class="el el-text" style="left:96px; top:200px; width:1088px; height:440px;">
-      <p><span style="font-size:24px;">본문 내용을 여기에 작성합니다.</span></p>
-    </div>
-  </section>
-
-</main>
-<script data-webdeck-runtime="2">
+/** 문서에 내장되는 뷰어 런타임 전체 — 템플릿 3종과 바이트 단위 동일해야 한다 (templates.test.ts가 강제) */
+export const RUNTIME_SCRIPT = `<script data-webdeck-runtime="2">
 (function () {
   'use strict';
   document.querySelectorAll('.slide').forEach(function (slide) {
@@ -80,19 +28,19 @@
   style.textContent =
     '.wd-present-btn { position: fixed; top: 16px; right: 16px; z-index: 9000;' +
     ' font: 14px sans-serif; padding: 8px 16px; border: none; border-radius: 6px;' +
-    ' background: rgba(17, 24, 39, 0.8); color: #fff; cursor: pointer; opacity: 0.35; }\n' +
-    '.wd-present-btn:hover { opacity: 1; }\n' +
-    '.wd-stage { position: fixed; inset: 0; z-index: 9500; background: #000; overflow: hidden; }\n' +
+    ' background: rgba(17, 24, 39, 0.8); color: #fff; cursor: pointer; opacity: 0.35; }\\n' +
+    '.wd-present-btn:hover { opacity: 1; }\\n' +
+    '.wd-stage { position: fixed; inset: 0; z-index: 9500; background: #000; overflow: hidden; }\\n' +
     '.wd-stage .slide { position: absolute; left: 50%; top: 50%; margin: 0; box-shadow: none;' +
-    ' transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); }\n' +
-    '.wd-enter-fade { animation: wd-fade 0.35s ease both; }\n' +
-    '@keyframes wd-fade { from { opacity: 0; } to { opacity: 1; } }\n' +
-    '.wd-enter-push-next { animation: wd-push-next 0.3s ease both; }\n' +
+    ' transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); }\\n' +
+    '.wd-enter-fade { animation: wd-fade 0.35s ease both; }\\n' +
+    '@keyframes wd-fade { from { opacity: 0; } to { opacity: 1; } }\\n' +
+    '.wd-enter-push-next { animation: wd-push-next 0.3s ease both; }\\n' +
     '@keyframes wd-push-next { from { transform: translate(calc(-50% + 100vw), -50%) scale(var(--wd-scale, 1)); }' +
-    ' to { transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); } }\n' +
-    '.wd-enter-push-prev { animation: wd-push-prev 0.3s ease both; }\n' +
+    ' to { transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); } }\\n' +
+    '.wd-enter-push-prev { animation: wd-push-prev 0.3s ease both; }\\n' +
     '@keyframes wd-push-prev { from { transform: translate(calc(-50% - 100vw), -50%) scale(var(--wd-scale, 1)); }' +
-    ' to { transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); } }\n' +
+    ' to { transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); } }\\n' +
     '@media print { .wd-present-btn { display: none; } }';
   document.head.appendChild(style);
 
@@ -175,6 +123,38 @@
     else if (e.key === 'Escape') { e.preventDefault(); exit(); }
   });
 })();
-</script>
-</body>
-</html>
+</script>`
+
+const V1_SIGNATURES = ['dataset.slideWidth', 'beforeprint']
+
+/** WebDeck 런타임 스크립트 판정 — 마커 우선, 없으면 v1 시그니처 휴리스틱 */
+function isRuntimeScript(el: Element): boolean {
+  if (el.hasAttribute('data-webdeck-runtime')) return true
+  const text = el.textContent ?? ''
+  return V1_SIGNATURES.every((sig) => text.includes(sig))
+}
+
+/**
+ * bodyScript의 런타임을 최신본으로 정규화한다 (문서 열기 시 1회 — 스펙 §2.3).
+ * 인식된 런타임은 첫 자리에 1개로 교체, 그 외 스크립트는 원문 보존.
+ * 스크립트가 하나도 없으면 런타임을 추가. 변경 없으면 같은 객체 반환(멱등).
+ */
+export function normalizeRuntime(doc: DeckDoc): DeckDoc {
+  const dom = new DOMParser().parseFromString(`<body>${doc.bodyScript}</body>`, 'text/html')
+  const scripts = Array.from(dom.body.querySelectorAll('script'))
+  const parts: string[] = []
+  let replaced = false
+  for (const s of scripts) {
+    if (isRuntimeScript(s)) {
+      if (!replaced) {
+        parts.push(RUNTIME_SCRIPT)
+        replaced = true
+      }
+    } else {
+      parts.push(s.outerHTML)
+    }
+  }
+  if (!replaced && scripts.length === 0) parts.push(RUNTIME_SCRIPT)
+  const bodyScript = parts.join('\n')
+  return bodyScript === doc.bodyScript ? doc : { ...doc, bodyScript }
+}
