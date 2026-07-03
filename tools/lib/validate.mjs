@@ -93,6 +93,10 @@ export function validateWebdeck(html) {
 function validateSlide(slide, num, ctx) {
   const { canvasW, canvasH, errors, warnings } = ctx
   const label = `슬라이드 ${num}`
+  const transition = slide.getAttribute('data-transition')
+  if (transition != null && !['fade', 'push'].includes(transition)) {
+    errors.push(`${label}: data-transition은 fade/push만 지원합니다 (현재 "${transition}")`)
+  }
   const children = slide.childNodes.filter((n) => n.nodeType === 1)
 
   for (const el of children) {

@@ -109,3 +109,20 @@ test('iframe/video 등 외부 콘텐츠 요소는 오류', () => {
   const { errors } = validateWebdeck(makeDoc({ slides }))
   assert.ok(errors.some((e) => e.includes('iframe')))
 })
+
+test('data-transition은 fade/push만 허용한다', () => {
+  const bad = validateWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide" data-transition="zoom"></section>
+</main></body></html>`)
+  assert.ok(bad.errors.some((e) => e.includes('data-transition')))
+
+  const good = validateWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide" data-transition="fade" data-notes="멘트"></section>
+<section class="slide" data-transition="push"></section>
+</main></body></html>`)
+  assert.deepStrictEqual(good.errors, [])
+})

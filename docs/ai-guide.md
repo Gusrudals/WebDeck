@@ -18,11 +18,18 @@
 11. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙) (오류)
 12. `el-shape`는 `data-shape="rect"`만 지원 (v1) (오류)
 13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현 (오류)
+14. `data-transition`(슬라이드 전환)은 `fade`/`push`만 지원 — 선택 속성 (오류)
 
 ## 문서 골격
 
 `templates/minimal.html`의 `<style>`(뷰어 CSS)과 `<script>`(뷰어 스크립트) 블록을 그대로 복사하고,
 `<main class="deck">` 안에 슬라이드를 채운다. 슬라이드 배경은 `data-bg="#ffffff"` 속성으로 지정한다.
+
+슬라이드에는 선택 속성 2개를 쓸 수 있다: `data-transition="fade|push"`(발표 전환 효과),
+`data-notes="평문"`(발표 노트). 문서를 브라우저로 열면 우상단 "발표" 버튼(또는 `P` 키)으로
+전체화면 발표 모드가 시작된다(`→`/`←` 이동, `Esc` 종료). 뷰어 스크립트 블록은
+`data-webdeck-runtime` 마커가 붙은 최신본을 템플릿에서 그대로 복사한다 —
+에디터가 문서를 열어 저장하면 이 블록은 항상 최신 런타임으로 자동 갱신된다.
 
 ## 좌표 체계
 
