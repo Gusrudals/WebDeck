@@ -240,3 +240,18 @@ test('투명도 0%는 opacity 키를 제거한다', () => {
   const el = doc.slides[0]!.elements[0]!
   expect(el.type !== 'opaque' && 'opacity' in el.extraStyle).toBe(false)
 })
+
+test('비정상 opacity 값은 NaN 없이 0%로 표시된다', () => {
+  const DOC_BAD = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:50px; height:50px; opacity:inherit;"></div>
+</section>
+</main></body></html>`)
+  const id = DOC_BAD.slides[0]!.elements[0]!.id
+  const { getByLabelText, getByText } = renderPanel({ doc: DOC_BAD, selectedIds: [id] })
+  expect((getByLabelText('투명도') as HTMLInputElement).value).toBe('0')
+  expect(getByText('0%')).toBeTruthy()
+})

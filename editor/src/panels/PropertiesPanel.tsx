@@ -59,7 +59,9 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
     for (const el of selectedKnown) d = setElementStyle(d, slide.id, el.id, patch)
     dispatch({ type: 'APPLY_DOC', doc: d })
   }
-  const opacityShown = opacityDraft ?? (first ? String(Math.round((1 - Number(first.extraStyle['opacity'] ?? '1')) * 100)) : '0')
+  const rawOpacity = first ? Number(first.extraStyle['opacity'] ?? '1') : 1
+  const safeOpacity = Number.isFinite(rawOpacity) ? Math.min(1, Math.max(0, rawOpacity)) : 1
+  const opacityShown = opacityDraft ?? String(Math.round((1 - safeOpacity) * 100))
   const commitOpacity = () => {
     if (opacityDraft === null) return
     const t = Math.max(0, Math.min(100, Number(opacityDraft)))

@@ -87,6 +87,6 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .prop-row input.num { width: 64px; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 4px; }
 .prop-note { font-size: 12px; color: #92400e; margin: 4px 0; }
 .btn-row { display: inline-flex; gap: 2px; }
-.btn-row button, .props section button { font: inherit; font-size: 12px; padding: 3px 7px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; }
+.btn-row button { font: inherit; font-size: 12px; padding: 3px 7px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; }
 .opacity-value { font-size: 12px; color: #6b7280; width: 34px; text-align: right; }
 .prop-row input[type='range'] { flex: 1; min-width: 0; }
