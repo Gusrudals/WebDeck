@@ -158,6 +158,34 @@ test('nw 핸들 드래그는 left/top을 함께 옮긴다', () => {
   })
 })
 
+test('Shift+모서리 리사이즈는 종횡비를 유지한다', () => {
+  const { dispatch, container } = renderCanvas([EL_SHAPE])
+  fireEvent.pointerDown(container.querySelector('.handle-se')!, { clientX: 380, clientY: 380 })
+  fireEvent.pointerMove(window, { clientX: 480, clientY: 400, shiftKey: true })
+  fireEvent.pointerUp(window)
+  const doc = appliedDoc(dispatch)!
+  // 80×80에서 dx 100, dy 20 → 폭 변화 우세 → 180×180 (비율 1:1)
+  expect(doc.slides[0]!.elements[1]!).toMatchObject({ frame: { left: 300, top: 300, width: 180, height: 180 } })
+})
+
+test('리사이즈 중 움직이는 변이 스냅 대상에 흡착된다', () => {
+  const { dispatch, container } = renderCanvas([EL_SHAPE])
+  fireEvent.pointerDown(container.querySelector('.handle-e')!, { clientX: 380, clientY: 340 })
+  // dx 256 → 오른쪽 변 636, 슬라이드 중앙 640까지 4px(임계 6 이내) → 흡착
+  fireEvent.pointerMove(window, { clientX: 636, clientY: 340 })
+  fireEvent.pointerUp(window)
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[1]!).toMatchObject({ frame: { width: 340 } })
+})
+
+test('리사이즈 스냅 중 가이드 라인이 표시된다', () => {
+  const { container } = renderCanvas([EL_SHAPE])
+  fireEvent.pointerDown(container.querySelector('.handle-e')!, { clientX: 380, clientY: 340 })
+  fireEvent.pointerMove(window, { clientX: 636, clientY: 340 })
+  expect(container.querySelector('.snap-guide-x')).toBeTruthy()
+  fireEvent.pointerUp(window)
+})
+
 test('이동 중 pointercancel은 커밋 없이 리스너를 해제한다', () => {
   const { dispatch, getByText } = renderCanvas([EL_TEXT])
   fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })

@@ -4,7 +4,7 @@ import { moveElement, setElementFrame, setTextHtml } from '../model/ops.ts'
 import type { DeckDoc, Frame } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction } from '../state/store.ts'
-import { buildSnapTargets, resizeFrame, snapMove } from './geometry.ts'
+import { buildSnapTargets, resizeFrame, snapMove, snapResize } from './geometry.ts'
 import type { Guide, ResizeHandle, SnapTargets } from './geometry.ts'
 import { SelectionOverlay } from './SelectionOverlay.tsx'
 import { SlideView } from './SlideView.tsx'
@@ -28,6 +28,7 @@ interface ResizeGesture {
   slideId: string
   id: string
   frame: Frame
+  guides: Guide[]
   resized: boolean
 }
 
@@ -129,17 +130,31 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
   const beginResize = (e: ReactPointerEvent, handle: ResizeHandle) => {
     e.stopPropagation()
     e.preventDefault()
-    const el = slide.elements.filter(isKnownElement).find((k) => k.id === selectedIds[0])
+    const known = slide.elements.filter(isKnownElement)
+    const el = known.find((k) => k.id === selectedIds[0])
     if (!el) return
     const startX = e.clientX
     const startY = e.clientY
     const orig = el.frame
+    const targets = buildSnapTargets(
+      doc.slideWidth,
+      doc.slideHeight,
+      known.filter((k) => k.id !== el.id).map((k) => k.frame),
+    )
     const docAtStart = doc
-    const g: ResizeGesture = { kind: 'resize', slideId: slide.id, id: el.id, frame: orig, resized: false }
+    const g: ResizeGesture = { kind: 'resize', slideId: slide.id, id: el.id, frame: orig, guides: [], resized: false }
     const onMove = (ev: PointerEvent) => {
       const dx = (ev.clientX - startX) / scaleRef.current
       const dy = (ev.clientY - startY) / scaleRef.current
-      g.frame = resizeFrame(orig, handle, dx, dy)
+      // Shift+모서리 = 비율 고정(스냅 생략 — 두 보정의 충돌 회피), 그 외 = 리사이즈 스냅
+      if (ev.shiftKey && handle.length === 2) {
+        g.frame = resizeFrame(orig, handle, dx, dy, true)
+        g.guides = []
+      } else {
+        const r = snapResize(orig, handle, dx, dy, targets)
+        g.frame = r.frame
+        g.guides = r.guides
+      }
       g.resized = true
       setGesture({ ...g })
     }
@@ -213,7 +228,7 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
             <SelectionOverlay
               slide={previewSlide}
               selectedIds={selectedIds}
-              guides={gesture?.kind === 'move' ? gesture.guides : []}
+              guides={gesture?.guides ?? []}
               resize={
                 singleSelected && editingTextId !== singleSelected.id
                   ? { elementId: singleSelected.id, onHandlePointerDown: beginResize }
