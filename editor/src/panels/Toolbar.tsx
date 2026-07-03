@@ -121,22 +121,32 @@ export function Toolbar({
 
   const verticalAlign = (justify: 'flex-start' | 'center' | 'flex-end') => {
     if (!doc || !slide) return
+    const targets = selectedKnown.filter(
+      (el) =>
+        el.type === 'text' &&
+        (el.extraStyle['display'] !== 'flex' ||
+          el.extraStyle['flex-direction'] !== 'column' ||
+          el.extraStyle['justify-content'] !== justify),
+    )
+    if (targets.length === 0) return
     let d = doc
-    for (const el of selectedKnown) {
-      if (el.type === 'text') {
-        d = setElementStyle(d, slide.id, el.id, {
-          display: 'flex',
-          'flex-direction': 'column',
-          'justify-content': justify,
-        })
-      }
+    for (const el of targets) {
+      d = setElementStyle(d, slide.id, el.id, {
+        display: 'flex',
+        'flex-direction': 'column',
+        'justify-content': justify,
+      })
     }
-    if (d !== doc) dispatch({ type: 'APPLY_DOC', doc: d })
+    dispatch({ type: 'APPLY_DOC', doc: d })
   }
 
   const distribute = (axis: 'x' | 'y') => {
     if (!doc || !slide || selectedKnown.length < 3) return
     const frames = distributeFrames(selectedKnown.map((el) => el.frame), axis)
+    const changed = selectedKnown.some(
+      (el, i) => el.frame.left !== frames[i]!.left || el.frame.top !== frames[i]!.top,
+    )
+    if (!changed) return
     let d = doc
     selectedKnown.forEach((el, i) => {
       d = setElementFrame(d, slide.id, el.id, frames[i]!)

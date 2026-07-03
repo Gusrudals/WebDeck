@@ -229,3 +229,37 @@ test('2개 선택이면 분배 버튼이 비활성이다', () => {
   const { getByRole } = renderToolbar({ selectedIds: [EL_TEXT, EL_SHAPE] })
   expect((getByRole('button', { name: '가로 분배' }) as HTMLButtonElement).disabled).toBe(true)
 })
+
+const DOC_EVEN = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:100px; height:50px;"></div>
+<div class="el el-shape" data-shape="rect" style="left:250px; top:0px; width:100px; height:50px;"></div>
+<div class="el el-shape" data-shape="rect" style="left:500px; top:0px; width:100px; height:50px;"></div>
+</section>
+</main></body></html>`)
+
+test('이미 균등한 간격이면 분배는 dispatch하지 않는다', () => {
+  const ids = DOC_EVEN.slides[0]!.elements.map((e) => e.id)
+  const { dispatch, getByRole } = renderToolbar({ doc: DOC_EVEN, selectedIds: ids })
+  fireEvent.click(getByRole('button', { name: '가로 분배' }))
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+const DOC_FLEX = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-text" style="left:0px; top:0px; width:100px; height:50px; display:flex; flex-direction:column; justify-content:center;"><p>가운데</p></div>
+</section>
+</main></body></html>`)
+
+test('이미 같은 세로 정렬이면 dispatch하지 않는다', () => {
+  const id = DOC_FLEX.slides[0]!.elements[0]!.id
+  const { dispatch, getByRole } = renderToolbar({ doc: DOC_FLEX, selectedIds: [id] })
+  fireEvent.click(getByRole('button', { name: '텍스트 중간' }))
+  expect(dispatch).not.toHaveBeenCalled()
+})
