@@ -4,6 +4,21 @@ import type { DeckDoc } from '../model/types.ts'
 import { parseWebdeck } from '../model/parse.ts'
 import { CanvasArea } from './CanvasArea.tsx'
 
+// happy-dom(20.x)의 WheelEvent는 스펙과 달리 MouseEvent를 상속하지 않아
+// ctrlKey/metaKey가 항상 undefined다 (실제 브라우저에서는 정상 동작). fireEvent.wheel의
+// init을 인스턴스에 반영하도록 이 테스트 파일 범위에서만 보정한다.
+const NativeWheelEvent = globalThis.WheelEvent
+class TestWheelEvent extends NativeWheelEvent {
+  override readonly ctrlKey: boolean
+  override readonly metaKey: boolean
+  constructor(type: string, eventInitDict?: WheelEventInit) {
+    super(type, eventInitDict)
+    this.ctrlKey = eventInitDict?.ctrlKey ?? false
+    this.metaKey = eventInitDict?.metaKey ?? false
+  }
+}
+globalThis.WheelEvent = TestWheelEvent
+
 const DOC = parseWebdeck(`<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
 <head><meta charset="utf-8"><title>t</title></head>
@@ -246,4 +261,39 @@ test('Escape는 커밋하고 편집을 끝낸다', () => {
   const el = appliedDoc(dispatch)!.slides[0]!.elements[0]!
   if (el.type === 'text') expect(el.html).toBe('<p>ESC</p>')
   expect(dispatch).toHaveBeenCalledWith({ type: 'END_TEXT_EDIT' })
+})
+
+test('확대 비율 200% 선택은 스테이지 크기를 2배로 만든다', () => {
+  const { container, getByLabelText } = renderCanvas()
+  fireEvent.change(getByLabelText('확대 비율'), { target: { value: '2' } })
+  const box = container.querySelector('.canvas-stage-box') as HTMLElement
+  expect(box.style.width).toBe('2560px')
+  expect(box.style.height).toBe('1440px')
+})
+
+test('Ctrl+휠은 프리셋 단계를 오르내린다', () => {
+  const { container, getByLabelText } = renderCanvas()
+  const scroll = container.querySelector('.canvas-scroll')!
+  fireEvent.wheel(scroll, { ctrlKey: true, deltaY: -100 })
+  // 테스트 환경 fitScale=1에서 확대 → 다음 단계 1.5
+  expect((getByLabelText('확대 비율') as HTMLSelectElement).value).toBe('1.5')
+  fireEvent.wheel(scroll, { ctrlKey: true, deltaY: 100 })
+  expect((getByLabelText('확대 비율') as HTMLSelectElement).value).toBe('1')
+})
+
+test('줌 컨트롤 클릭은 선택을 해제하지 않는다', () => {
+  const { dispatch, container } = renderCanvas([EL_TEXT])
+  fireEvent.pointerDown(container.querySelector('.zoom-control')!)
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('배율 200%에서 드래그 좌표가 보정된다', () => {
+  const { dispatch, getByText, getByLabelText } = renderCanvas([EL_TEXT])
+  fireEvent.change(getByLabelText('확대 비율'), { target: { value: '2' } })
+  fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
+  fireEvent.pointerMove(window, { clientX: 110, clientY: 10 })
+  fireEvent.pointerUp(window)
+  const doc = appliedDoc(dispatch)!
+  // 화면 100px ÷ 배율 2 = 모델 50px
+  expect(doc.slides[0]!.elements[0]!).toMatchObject({ frame: { left: 50, top: 0 } })
 })

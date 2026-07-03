@@ -13,6 +13,8 @@ import { extractThemeVars } from './styleFromModel.ts'
 const MARGIN = 48
 const DRAG_THRESHOLD = 3
 
+export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2]
+
 interface MoveGesture {
   kind: 'move'
   slideId: string
@@ -44,7 +46,9 @@ export interface CanvasAreaProps {
 
 export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispatch }: CanvasAreaProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
+  const [fitScale, setFitScale] = useState(1)
+  const [zoom, setZoom] = useState<'fit' | number>('fit')
+  const scale = zoom === 'fit' ? fitScale : zoom
   const scaleRef = useRef(1)
   scaleRef.current = scale
   const [gesture, setGesture] = useState<Gesture | null>(null)
@@ -55,12 +59,28 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
       if (!area || !area.clientWidth || !area.clientHeight) return
       const scaleX = (area.clientWidth - MARGIN) / doc.slideWidth
       const scaleY = (area.clientHeight - MARGIN) / doc.slideHeight
-      setScale(Math.max(0.1, Math.min(1, scaleX, scaleY)))
+      setFitScale(Math.max(0.1, Math.min(1, scaleX, scaleY)))
     }
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
   }, [doc.slideWidth, doc.slideHeight])
+
+  useEffect(() => {
+    const area = ref.current
+    if (!area) return
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      setZoom((z) => {
+        const current = z === 'fit' ? fitScale : z
+        if (e.deltaY < 0) return ZOOM_LEVELS.find((l) => l > current + 0.001) ?? ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!
+        return [...ZOOM_LEVELS].reverse().find((l) => l < current - 0.001) ?? ZOOM_LEVELS[0]!
+      })
+    }
+    area.addEventListener('wheel', onWheel, { passive: false })
+    return () => area.removeEventListener('wheel', onWheel)
+  }, [fitScale])
 
   const previewDoc = useMemo(() => {
     if (!gesture) return doc
@@ -210,33 +230,46 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
   return (
     <main
       className="canvas-area"
-      ref={ref}
       onPointerDown={() => {
         if (!editingTextId) dispatch({ type: 'CLEAR_SELECTION' })
       }}
     >
-      <div style={{ width: doc.slideWidth * scale, height: doc.slideHeight * scale }}>
-        <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-          <div className="slide-stage" style={{ position: 'relative', width: doc.slideWidth, height: doc.slideHeight }}>
-            <SlideView
-              slide={previewSlide}
-              width={doc.slideWidth}
-              height={doc.slideHeight}
-              themeVars={themeVars}
-              interaction={{ selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit }}
-            />
-            <SelectionOverlay
-              slide={previewSlide}
-              selectedIds={selectedIds}
-              guides={gesture?.guides ?? []}
-              resize={
-                singleSelected && editingTextId !== singleSelected.id
-                  ? { elementId: singleSelected.id, onHandlePointerDown: beginResize }
-                  : undefined
-              }
-            />
+      <div className="canvas-scroll" ref={ref}>
+        <div className="canvas-stage-box" style={{ width: doc.slideWidth * scale, height: doc.slideHeight * scale }}>
+          <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+            <div className="slide-stage" style={{ position: 'relative', width: doc.slideWidth, height: doc.slideHeight }}>
+              <SlideView
+                slide={previewSlide}
+                width={doc.slideWidth}
+                height={doc.slideHeight}
+                themeVars={themeVars}
+                interaction={{ selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit }}
+              />
+              <SelectionOverlay
+                slide={previewSlide}
+                selectedIds={selectedIds}
+                guides={gesture?.guides ?? []}
+                resize={
+                  singleSelected && editingTextId !== singleSelected.id
+                    ? { elementId: singleSelected.id, onHandlePointerDown: beginResize }
+                    : undefined
+                }
+              />
+            </div>
           </div>
         </div>
+      </div>
+      <div className="zoom-control" onPointerDown={(e) => e.stopPropagation()}>
+        <select
+          aria-label="확대 비율"
+          value={zoom === 'fit' ? 'fit' : String(zoom)}
+          onChange={(e) => setZoom(e.target.value === 'fit' ? 'fit' : Number(e.target.value))}
+        >
+          <option value="fit">맞춤</option>
+          {ZOOM_LEVELS.map((l) => (
+            <option key={l} value={l}>{Math.round(l * 100)}%</option>
+          ))}
+        </select>
       </div>
     </main>
   )

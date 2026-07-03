@@ -20,6 +20,10 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 
 .side { background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 12px; }
 .canvas-area { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.canvas-scroll { width: 100%; height: 100%; overflow: auto; display: flex; }
+.canvas-stage-box { margin: auto; flex: none; }
+.zoom-control { position: absolute; right: 12px; bottom: 12px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 4px; }
+.zoom-control select { font: inherit; font-size: 12px; border: none; background: none; }
 
 .slide-view { position: relative; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); flex: none; font-family: var(--wd-font-body); color: var(--wd-text); }
 .slide-view .el-text p { margin: 0; }
