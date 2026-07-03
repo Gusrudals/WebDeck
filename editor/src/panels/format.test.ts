@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { FONT_FAMILIES, clampFontSize, execFontName, focusEditable, restoreSelection, saveSelection } from './format.ts'
+import { FONT_FAMILIES, clampFontSize, execFontName, execList, focusEditable, restoreSelection, saveSelection } from './format.ts'
 
 describe('셀렉션 저장/복원', () => {
   test('셀렉션이 없어도 안전하다', () => {
@@ -36,6 +36,15 @@ test('focusEditable은 .text-editable에 포커스를 준다', () => {
   focusEditable()
   expect(document.activeElement).toBe(div)
   div.remove()
+})
+
+test('execList는 목록 execCommand를 호출한다', () => {
+  const spy = vi.fn()
+  ;(document as unknown as { execCommand: unknown }).execCommand = spy
+  execList('ul')
+  expect(spy).toHaveBeenCalledWith('insertUnorderedList')
+  execList('ol')
+  expect(spy).toHaveBeenCalledWith('insertOrderedList')
 })
 
 describe('폰트·크기 유틸', () => {

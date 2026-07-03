@@ -5,6 +5,7 @@ import type { DeckDoc } from '../model/types.ts'
 import { editorReducer, initialEditorState } from '../state/store.ts'
 import type { EditorState } from '../state/store.ts'
 import { FONT_FAMILIES } from './format.ts'
+import { PALETTE } from './ColorPopover.tsx'
 import { Toolbar } from './Toolbar.tsx'
 
 const DOC = parseWebdeck(`<!DOCTYPE html>
@@ -146,4 +147,27 @@ test('다른 텍스트 도구로의 blur는 편집을 유지한다', () => {
   fireEvent.blur(getByLabelText('글자 크기'), { relatedTarget: tool })
   expect(dispatch).not.toHaveBeenCalled()
   tool.remove()
+})
+
+test('글자색 팝오버에서 스와치 선택은 foreColor를 실행한다', () => {
+  const { getByRole } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.click(getByRole('button', { name: '글자색' }))
+  fireEvent.click(getByRole('button', { name: `색 ${PALETTE[0]}` }))
+  expect(document.execCommand).toHaveBeenCalledWith('foreColor', false, PALETTE[0])
+})
+
+test('글자색 hex 적용은 입력한 색으로 foreColor를 실행한다', () => {
+  const { getByRole, getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.click(getByRole('button', { name: '글자색' }))
+  fireEvent.change(getByLabelText('글자색 hex'), { target: { value: '#ff8800' } })
+  fireEvent.keyDown(getByLabelText('글자색 hex'), { key: 'Enter' })
+  expect(document.execCommand).toHaveBeenCalledWith('foreColor', false, '#ff8800')
+})
+
+test('목록 버튼은 목록 execCommand를 실행한다', () => {
+  const { getByRole } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.click(getByRole('button', { name: '글머리 기호' }))
+  expect(document.execCommand).toHaveBeenCalledWith('insertUnorderedList')
+  fireEvent.click(getByRole('button', { name: '번호 매기기' }))
+  expect(document.execCommand).toHaveBeenCalledWith('insertOrderedList')
 })

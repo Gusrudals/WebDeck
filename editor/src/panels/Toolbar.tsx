@@ -16,9 +16,10 @@ import type { ZDirection } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import {
-  FONT_FAMILIES, FONT_SIZES, TEXT_COLORS, clampFontSize, execColor, execFontName, execFontSize, execFormat,
+  FONT_FAMILIES, FONT_SIZES, clampFontSize, execColor, execFontName, execFontSize, execFormat, execList,
   focusEditable, restoreSelection, saveSelection,
 } from './format.ts'
+import { ColorPopover } from './ColorPopover.tsx'
 
 const keepFocus = (e: ReactPointerEvent) => e.preventDefault()
 
@@ -193,9 +194,20 @@ export function Toolbar({
             <option key={px} value={px}>{px}px</option>
           ))}
         </select>
-        {TEXT_COLORS.map((c) => (
-          <button key={c} type="button" className="swatch" aria-label={`글자색 ${c}`} title={`글자색 ${c}`} style={{ background: c }} disabled={!editing} onPointerDown={keepFocus} onClick={() => execColor(c)} />
-        ))}
+        <ColorPopover
+          label="글자색"
+          disabled={!editing}
+          textTool
+          onActivate={saveSelection}
+          onHexBlur={commitEditingFromTool}
+          onPick={(c) => {
+            restoreSelection()
+            execColor(c)
+            focusEditable()
+          }}
+        />
+        <button type="button" aria-label="글머리 기호" title="글머리 기호" disabled={!editing} onPointerDown={keepFocus} onClick={() => execList('ul')}>••</button>
+        <button type="button" aria-label="번호 매기기" title="번호 매기기" disabled={!editing} onPointerDown={keepFocus} onClick={() => execList('ol')}>1.</button>
         <button type="button" aria-label="왼쪽 정렬" title="왼쪽 정렬" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('justifyLeft')}>⇤</button>
         <button type="button" aria-label="가운데 정렬" title="가운데 정렬" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('justifyCenter')}>⇔</button>
         <button type="button" aria-label="오른쪽 정렬" title="오른쪽 정렬" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('justifyRight')}>⇥</button>
