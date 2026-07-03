@@ -166,7 +166,7 @@
     '.wd-enter-push-prev { animation: wd-push-prev 0.3s ease both; }\n' +
     '@keyframes wd-push-prev { from { transform: translate(calc(-50% - 100vw), -50%) scale(var(--wd-scale, 1)); }' +
     ' to { transform: translate(-50%, -50%) scale(var(--wd-scale, 1)); } }\n' +
-    '@media print { .wd-present-btn { display: none; } }';
+    '@media print { .wd-present-btn, .wd-stage { display: none; } }';
   document.head.appendChild(style);
 
   var btn = document.createElement('button');
@@ -235,6 +235,7 @@
     if (stage) render(0);
   });
   document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     var tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (!stage) {

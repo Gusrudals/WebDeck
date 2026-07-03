@@ -255,6 +255,20 @@ test('같은 전환 값(없음) 재선택은 디스패치하지 않는다', () =
   expect(dispatch).not.toHaveBeenCalled()
 })
 
+test('미지원 transition 잔재가 있으면 같은 값(없음) 선택도 디스패치해 잔재를 제거한다', () => {
+  const zoomDoc = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide" data-transition="zoom"></section>
+</main></body></html>`)
+  const { dispatch, getByLabelText } = renderPanel({ doc: zoomDoc })
+  fireEvent.change(getByLabelText('전환 효과'), { target: { value: 'none' } })
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  expect((applies[0]![0].doc as DeckDoc).slides[0]!.extraAttrs['data-transition']).toBeUndefined()
+})
+
 test('노트는 입력 중 디스패치 없이 blur에서 1회 커밋된다', () => {
   const { dispatch, getByLabelText } = renderPanel()
   const ta = getByLabelText('노트')

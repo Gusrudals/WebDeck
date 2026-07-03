@@ -19,6 +19,8 @@ import {
   setTextHtml,
 } from './ops.ts'
 import { parseWebdeck } from './parse.ts'
+import { checkRoundTrip } from './roundtrip.ts'
+import { serializeWebdeck } from './serialize.ts'
 import type { DeckDoc, Slide } from './types.ts'
 
 function fixture(): DeckDoc {
@@ -194,5 +196,20 @@ describe('setSlideTransition / setSlideNotes', () => {
     const doc = addSlide(parseWebdeck(TWO_SLIDE_DOC), createIdGen('a'))
     expect(doc.slides.at(-1)!.transition).toBeNull()
     expect(doc.slides.at(-1)!.notes).toBe('')
+  })
+
+  test('setSlideTransition은 extraAttrs의 미지원 data-transition 잔재를 제거한다 (중복 속성 방지)', () => {
+    const doc = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide" data-transition="zoom"></section>
+</main></body></html>`)
+    const id = doc.slides[0]!.id
+    const out = setSlideTransition(doc, id, 'fade')
+    expect(out.slides[0]!.transition).toBe('fade')
+    expect(out.slides[0]!.extraAttrs['data-transition']).toBeUndefined()
+    expect(checkRoundTrip(out)).toBeNull()
+    expect(serializeWebdeck(out).match(/data-transition/g)).toHaveLength(1)
   })
 })

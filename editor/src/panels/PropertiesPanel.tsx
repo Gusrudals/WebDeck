@@ -60,7 +60,7 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
             value={slide.transition ?? 'none'}
             onChange={(e) => {
               const v = e.target.value === 'none' ? null : (e.target.value as 'fade' | 'push')
-              if (v !== slide.transition) {
+              if (v !== slide.transition || 'data-transition' in slide.extraAttrs) {
                 dispatch({ type: 'APPLY_DOC', doc: setSlideTransition(doc, slide.id, v) })
               }
             }}

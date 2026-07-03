@@ -158,7 +158,12 @@ export function setSlideBg(doc: DeckDoc, slideId: string, bg: string | null): De
 }
 
 export function setSlideTransition(doc: DeckDoc, slideId: string, transition: Slide['transition']): DeckDoc {
-  return mapSlide(doc, slideId, (slide) => ({ ...slide, transition }))
+  return mapSlide(doc, slideId, (slide) => {
+    // 미지원 값으로 보존돼 있던 data-transition 잔재를 제거 — 중복 속성 직렬화 방지
+    const extraAttrs = { ...slide.extraAttrs }
+    delete extraAttrs['data-transition']
+    return { ...slide, transition, extraAttrs }
+  })
 }
 
 export function setSlideNotes(doc: DeckDoc, slideId: string, notes: string): DeckDoc {

@@ -42,3 +42,9 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - `<meta http-equiv="refresh">`로 iframe이 자기 내비게이션하면 저장이 무피드백 no-op (contentDocument null·희귀)
 - frameset 문서는 body가 frameset이라 편집 부산물 속성이 저장물에 잔존 (초희귀)
 - 커버리지 갭: Save As 취소 시 dirty 유지, 핸들 교체 후 연속 저장(리뷰 프로브로 정상 확인됨), 연속 일반 HTML 열기 seq 재마운트 직접 테스트
+
+## Plan 6 이월 (최종 리뷰에서 백로그 판정)
+
+- v1 런타임 시그니처 휴리스틱(dataset.slideWidth+beforeprint)이 우연히 일치하는 커스텀 스크립트를 무경고 교체할 수 있음 — `<script src>` 제외·`.deck` 참조 동시 요구 등으로 조이기 검토
+- 구 런타임이 비스크립트 요소 안에 중첩된 문서는 bodyExtra로 보존되고 새 런타임이 추가돼 이중 실행 가능 (실문서 확률 희박)
+- `data-notes=""` 명시 빈 속성은 저장 시 탈락 (모델 동등, 바이트 차이만 — 기록)
