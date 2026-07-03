@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import type { Dispatch } from 'react'
-import { setSlideBg } from '../model/ops.ts'
+import { MIN_SIZE } from '../canvas/geometry.ts'
+import { setElementFrame, setSlideBg } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
+import type { Frame } from '../model/types.ts'
 
 export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispatch: Dispatch<EditorAction> }) {
   const { doc, currentSlideIndex, selectedIds } = state
@@ -39,7 +41,63 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
   return (
     <aside className="props" aria-label="속성">
       <h2>{selectedKnown.length === 1 ? '요소' : `요소 ${selectedKnown.length}개`}</h2>
-      {/* 위치·크기(Task 5), 스타일(Task 6~7) 섹션이 여기에 추가된다 */}
+      {selectedKnown.length === 1 && (() => {
+        const el = selectedKnown[0]!
+        const commitFrame = (patch: Partial<Frame>) => {
+          const next = { ...el.frame, ...patch }
+          next.width = Math.max(MIN_SIZE, next.width)
+          next.height = Math.max(MIN_SIZE, next.height)
+          if (
+            next.left === el.frame.left && next.top === el.frame.top &&
+            next.width === el.frame.width && next.height === el.frame.height
+          ) return
+          dispatch({ type: 'APPLY_DOC', doc: setElementFrame(doc, slide.id, el.id, next) })
+        }
+        return (
+          <section aria-label="위치와 크기">
+            <NumberField label="X" value={el.frame.left} onCommit={(v) => commitFrame({ left: v })} />
+            <NumberField label="Y" value={el.frame.top} onCommit={(v) => commitFrame({ top: v })} />
+            <NumberField label="너비" value={el.frame.width} onCommit={(v) => commitFrame({ width: v })} />
+            <NumberField label="높이" value={el.frame.height} onCommit={(v) => commitFrame({ height: v })} />
+          </section>
+        )
+      })()}
+      {/* 스타일(Task 6~7) 섹션이 여기에 추가된다 */}
     </aside>
+  )
+}
+
+function NumberField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const shown = draft ?? String(Math.round(value * 10) / 10)
+  const commit = () => {
+    if (draft === null) return
+    const n = Number(draft)
+    setDraft(null)
+    if (draft.trim() === '' || !Number.isFinite(n)) return
+    onCommit(n)
+  }
+  return (
+    <label className="prop-row">
+      {label}
+      <input
+        className="num"
+        aria-label={label}
+        inputMode="decimal"
+        value={shown}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            commit()
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            setDraft(null)
+          }
+        }}
+      />
+    </label>
   )
 }

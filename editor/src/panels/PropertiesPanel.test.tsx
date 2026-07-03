@@ -81,3 +81,52 @@ test('doc이 없으면 빈 패널을 렌더링한다', () => {
   expect(container.querySelector('.props')).toBeTruthy()
   expect(queryByText('슬라이드')).toBeNull()
 })
+
+test('단일 선택 시 X 입력 + Enter는 left를 갱신한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  const input = getByLabelText('X')
+  fireEvent.change(input, { target: { value: '50' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[1]!).toMatchObject({ frame: { left: 50, top: 300, width: 80, height: 80 } })
+})
+
+test('너비는 최소 8로 클램프된다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  const input = getByLabelText('너비')
+  fireEvent.change(input, { target: { value: '3' } })
+  fireEvent.blur(input)
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[1]!).toMatchObject({ frame: { width: 8 } })
+})
+
+test('숫자가 아닌 입력은 커밋하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  const input = getByLabelText('X')
+  fireEvent.change(input, { target: { value: 'abc' } })
+  fireEvent.blur(input)
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('값이 그대로면 dispatch하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  const input = getByLabelText('X')
+  fireEvent.change(input, { target: { value: '300' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('Escape는 드래프트를 버린다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  const input = getByLabelText('X') as HTMLInputElement
+  fireEvent.change(input, { target: { value: '999' } })
+  fireEvent.keyDown(input, { key: 'Escape' })
+  fireEvent.blur(input)
+  expect(dispatch).not.toHaveBeenCalled()
+  expect(input.value).toBe('300')
+})
+
+test('다중 선택 시 위치·크기 섹션은 없다', () => {
+  const { queryByLabelText } = renderPanel({ selectedIds: [EL_TEXT, EL_SHAPE] })
+  expect(queryByLabelText('X')).toBeNull()
+})
