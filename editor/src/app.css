@@ -56,6 +56,8 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .toolbar button:hover:not(:disabled) { background: #f3f4f6; }
 .toolbar button:disabled { color: #9ca3af; cursor: default; }
 .toolbar .swatch { width: 18px; height: 18px; padding: 0; border: 1px solid #d1d5db; border-radius: 3px; }
+.toolbar select { font: inherit; font-size: 13px; padding: 3px 4px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; }
+.size-input { width: 52px; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 4px; }
 
 .dirty-dot { color: var(--wd-primary); }
 .error button { margin-left: 6px; font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid #b91c1c; border-radius: 4px; background: #fff; color: #b91c1c; cursor: pointer; }

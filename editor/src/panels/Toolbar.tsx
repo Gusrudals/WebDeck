@@ -1,4 +1,5 @@
-import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
+import { useState } from 'react'
+import type { Dispatch, FocusEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { alignFrame } from '../canvas/geometry.ts'
 import type { AlignMode } from '../canvas/geometry.ts'
 import {
@@ -9,11 +10,15 @@ import {
   moveElementZ,
   removeElement,
   setElementFrame,
+  setTextHtml,
 } from '../model/ops.ts'
 import type { ZDirection } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
-import { FONT_SIZES, TEXT_COLORS, execColor, execFontSize, execFormat } from './format.ts'
+import {
+  FONT_FAMILIES, FONT_SIZES, TEXT_COLORS, clampFontSize, execColor, execFontName, execFontSize, execFormat,
+  focusEditable, restoreSelection, saveSelection,
+} from './format.ts'
 
 const keepFocus = (e: ReactPointerEvent) => e.preventDefault()
 
@@ -48,6 +53,29 @@ export function Toolbar({
   const hasSelection = hasDoc && selectedIds.length > 0
   const singleId = hasSelection && selectedIds.length === 1 ? selectedIds[0]! : null
   const editing = editingTextId !== null
+  const [sizeDraft, setSizeDraft] = useState('')
+
+  /** 텍스트 도구 blur 폴백 — 포커스가 도구/에디터블 밖으로 나가면 편집을 정상 종료한다 */
+  const commitEditingFromTool = (e: FocusEvent<HTMLElement>) => {
+    const next = e.relatedTarget as HTMLElement | null
+    if (next?.closest?.('[data-text-tool], .text-editable')) return
+    const node = document.querySelector<HTMLElement>('.text-editable')
+    if (!node || !doc || !slide || editingTextId === null) return
+    const el = slide.elements.filter(isKnownElement).find((k) => k.id === editingTextId)
+    if (el?.type === 'text' && el.html !== node.innerHTML) {
+      dispatch({ type: 'APPLY_DOC', doc: setTextHtml(doc, slide.id, editingTextId, node.innerHTML) })
+    }
+    dispatch({ type: 'END_TEXT_EDIT' })
+  }
+
+  const applyFontSize = () => {
+    const n = Number(sizeDraft)
+    if (sizeDraft.trim() === '' || !Number.isFinite(n)) return
+    restoreSelection()
+    execFontSize(clampFontSize(n))
+    focusEditable()
+    setSizeDraft('')
+  }
 
   const insertText = () => {
     if (!doc || !slide) return
@@ -105,9 +133,66 @@ export function Toolbar({
         <button type="button" aria-label="굵게" title="굵게" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('bold')}><b>가</b></button>
         <button type="button" aria-label="기울임" title="기울임" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('italic')}><i>가</i></button>
         <button type="button" aria-label="밑줄" title="밑줄" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('underline')}><u>가</u></button>
-        {FONT_SIZES.map((px) => (
-          <button key={px} type="button" aria-label={`글자 크기 ${px}`} title={`글자 크기 ${px}px`} disabled={!editing} onPointerDown={keepFocus} onClick={() => execFontSize(px)}>{px}</button>
-        ))}
+        <select
+          aria-label="폰트"
+          data-text-tool="1"
+          disabled={!editing}
+          value=""
+          onFocus={saveSelection}
+          onBlur={commitEditingFromTool}
+          onChange={(e) => {
+            if (!e.target.value) return
+            restoreSelection()
+            execFontName(e.target.value)
+            focusEditable()
+          }}
+        >
+          <option value="" disabled>폰트</option>
+          {FONT_FAMILIES.map((f) => (
+            <option key={f.label} value={f.stack}>{f.label}</option>
+          ))}
+        </select>
+        <input
+          className="size-input"
+          aria-label="글자 크기"
+          data-text-tool="1"
+          placeholder="크기"
+          inputMode="numeric"
+          disabled={!editing}
+          value={sizeDraft}
+          onFocus={saveSelection}
+          onBlur={(e) => {
+            setSizeDraft('')
+            commitEditingFromTool(e)
+          }}
+          onChange={(e) => setSizeDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              applyFontSize()
+            }
+          }}
+        />
+        <select
+          aria-label="글자 크기 프리셋"
+          data-text-tool="1"
+          disabled={!editing}
+          value=""
+          onFocus={saveSelection}
+          onBlur={commitEditingFromTool}
+          onChange={(e) => {
+            const px = Number(e.target.value)
+            if (!px) return
+            restoreSelection()
+            execFontSize(px)
+            focusEditable()
+          }}
+        >
+          <option value="" disabled>크기</option>
+          {FONT_SIZES.map((px) => (
+            <option key={px} value={px}>{px}px</option>
+          ))}
+        </select>
         {TEXT_COLORS.map((c) => (
           <button key={c} type="button" className="swatch" aria-label={`글자색 ${c}`} title={`글자색 ${c}`} style={{ background: c }} disabled={!editing} onPointerDown={keepFocus} onClick={() => execColor(c)} />
         ))}

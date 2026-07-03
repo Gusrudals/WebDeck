@@ -4,6 +4,7 @@ import { parseWebdeck } from '../model/parse.ts'
 import type { DeckDoc } from '../model/types.ts'
 import { editorReducer, initialEditorState } from '../state/store.ts'
 import type { EditorState } from '../state/store.ts'
+import { FONT_FAMILIES } from './format.ts'
 import { Toolbar } from './Toolbar.tsx'
 
 const DOC = parseWebdeck(`<!DOCTYPE html>
@@ -102,4 +103,47 @@ test('삭제는 선택 요소를 지우고 선택을 비운다', () => {
   const call = dispatch.mock.calls.map(([a]) => a).find((a) => a?.type === 'APPLY_DOC')
   expect((call.doc as DeckDoc).slides[0]!.elements).toHaveLength(0)
   expect(call.select).toEqual([])
+})
+
+test('편집 중 폰트 선택은 fontName execCommand를 호출한다', () => {
+  const { getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.change(getByLabelText('폰트'), { target: { value: FONT_FAMILIES[0]!.stack } })
+  expect(document.execCommand).toHaveBeenCalledWith('fontName', false, FONT_FAMILIES[0]!.stack)
+})
+
+test('크기 입력 + Enter는 fontSize 우회를 실행한다', () => {
+  const { getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  const input = getByLabelText('글자 크기')
+  fireEvent.change(input, { target: { value: '30' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  expect(document.execCommand).toHaveBeenCalledWith('fontSize', false, '7')
+})
+
+test('크기 프리셋 선택도 fontSize를 실행한다', () => {
+  const { getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.change(getByLabelText('글자 크기 프리셋'), { target: { value: '28' } })
+  expect(document.execCommand).toHaveBeenCalledWith('fontSize', false, '7')
+})
+
+test('텍스트 도구에서 편집 밖으로 blur하면 편집을 커밋하고 종료한다', () => {
+  const editable = document.createElement('div')
+  editable.className = 'text-editable'
+  editable.innerHTML = '<p>수정됨</p>'
+  document.body.appendChild(editable)
+  const { dispatch, getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.blur(getByLabelText('글자 크기'))
+  expect(dispatch).toHaveBeenCalledWith({ type: 'END_TEXT_EDIT' })
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  editable.remove()
+})
+
+test('다른 텍스트 도구로의 blur는 편집을 유지한다', () => {
+  const tool = document.createElement('input')
+  tool.setAttribute('data-text-tool', '1')
+  document.body.appendChild(tool)
+  const { dispatch, getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.blur(getByLabelText('글자 크기'), { relatedTarget: tool })
+  expect(dispatch).not.toHaveBeenCalled()
+  tool.remove()
 })
