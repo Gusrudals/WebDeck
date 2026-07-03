@@ -119,6 +119,29 @@ test('저장은 검증 통과 후 FSA 핸들에 쓴다', async () => {
   expect(written[0]).toContain('첫 슬라이드 제목')
 })
 
+test('구버전 런타임 문서는 저장 시 최신 런타임으로 기록된다', async () => {
+  const OLD_RUNTIME_DOC = VALID_DOC.replace(
+    '</body>',
+    `<script>
+  (function () {
+    var deck = document.querySelector('.deck');
+    var slideWidth = Number(deck.dataset.slideWidth) || 1280;
+    window.addEventListener('beforeprint', function () { deck.style.zoom = 1; });
+  })();
+</script>
+</body>`,
+  )
+  const written = stubPickerWithWritable('old.html', OLD_RUNTIME_DOC)
+  render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '저장' }))
+  await vi.waitFor(() => expect(written).toHaveLength(1))
+  expect(written[0]).toContain('data-webdeck-runtime="2"')
+  // 구 런타임 본문이 교체되어 1개만 남는다
+  expect(written[0]!.split('data-webdeck-runtime').length - 1).toBe(1)
+})
+
 test('핸들에 createWritable이 없으면 다운로드로 저장하고 dirty를 해제한다', async () => {
   stubFilePicker('report.html', VALID_DOC)
   URL.createObjectURL = vi.fn(() => 'blob:x')

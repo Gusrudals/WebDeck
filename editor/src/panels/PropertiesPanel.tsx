@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import { MIN_SIZE } from '../canvas/geometry.ts'
-import { setElementFrame, setElementStyle, setSlideBg } from '../model/ops.ts'
+import { setElementFrame, setElementStyle, setSlideBg, setSlideNotes, setSlideTransition } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import type { Frame } from '../model/types.ts'
@@ -25,6 +25,10 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
   const [bgDraft, setBgDraft] = useState<string | null>(null)
   /** 투명도 슬라이더 조작 중 임시값 — pointerup/blur에서 1회 커밋 */
   const [opacityDraft, setOpacityDraft] = useState<string | null>(null)
+  /** 노트 드래프트 — 슬라이드 id를 함께 저장해 슬라이드 전환 시 다른 슬라이드에 커밋되는 것을 방지 */
+  const [notesDraft, setNotesDraft] = useState<{ slideId: string; text: string } | null>(null)
+  /** Escape 취소 플래그 — blur 핸들러가 취소를 커밋으로 오인하지 않게 ref로 전달 */
+  const notesEscRef = useRef(false)
   const slide = doc?.slides[currentSlideIndex] ?? null
   if (!doc || !slide) return <aside className="props" aria-label="속성" />
   const selectedKnown = slide.elements.filter(isKnownElement).filter((el) => selectedIds.includes(el.id))
@@ -46,6 +50,47 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
                 dispatch({ type: 'APPLY_DOC', doc: setSlideBg(doc, slide.id, bgDraft) })
               }
               setBgDraft(null)
+            }}
+          />
+        </label>
+        <label className="prop-row">
+          전환 효과
+          <select
+            aria-label="전환 효과"
+            value={slide.transition ?? 'none'}
+            onChange={(e) => {
+              const v = e.target.value === 'none' ? null : (e.target.value as 'fade' | 'push')
+              if (v !== slide.transition) {
+                dispatch({ type: 'APPLY_DOC', doc: setSlideTransition(doc, slide.id, v) })
+              }
+            }}
+          >
+            <option value="none">없음</option>
+            <option value="fade">페이드</option>
+            <option value="push">밀기</option>
+          </select>
+        </label>
+        <label className="prop-col">
+          노트
+          <textarea
+            aria-label="노트"
+            rows={6}
+            value={notesDraft?.slideId === slide.id ? notesDraft.text : slide.notes}
+            onChange={(e) => setNotesDraft({ slideId: slide.id, text: e.target.value })}
+            onBlur={() => {
+              const cancelled = notesEscRef.current
+              notesEscRef.current = false
+              if (!cancelled && notesDraft?.slideId === slide.id && notesDraft.text !== slide.notes) {
+                dispatch({ type: 'APPLY_DOC', doc: setSlideNotes(doc, slide.id, notesDraft.text) })
+              }
+              setNotesDraft(null)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                notesEscRef.current = true
+                e.currentTarget.blur()
+              }
             }}
           />
         </label>

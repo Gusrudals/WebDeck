@@ -10,6 +10,7 @@ import { canRedo, canUndo } from './model/history.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
 import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts'
 import { checkRoundTrip } from './model/roundtrip.ts'
+import { normalizeRuntime } from './model/runtime.ts'
 import { serializeWebdeck } from './model/serialize.ts'
 import type { DeckDoc } from './model/types.ts'
 import { StartScreen } from './panels/StartScreen.tsx'
@@ -44,7 +45,7 @@ export function App() {
     const template = TEMPLATES.find((t) => t.key === key)
     if (!template) return
     try {
-      const doc = parseWebdeck(template.html)
+      const doc = normalizeRuntime(parseWebdeck(template.html))
       dispatch({ type: 'START_DOC', doc, fileName: '제목 없음.html' })
     } catch {
       dispatch({ type: 'OPEN_ERROR', message: '템플릿을 불러올 수 없습니다' })
@@ -63,7 +64,7 @@ export function App() {
     }
     if (!opened) return
     try {
-      const doc = parseWebdeck(opened.text)
+      const doc = normalizeRuntime(parseWebdeck(opened.text))
       setDocFile(null)
       dispatch({ type: 'OPEN_SUCCESS', doc, fileName: opened.name, fileHandle: opened.handle })
     } catch (e) {

@@ -241,6 +241,49 @@ test('투명도 0%는 opacity 키를 제거한다', () => {
   expect(el.type !== 'opaque' && 'opacity' in el.extraStyle).toBe(false)
 })
 
+test('전환 효과 선택은 1회 APPLY_DOC 한다', () => {
+  const { dispatch, getByLabelText } = renderPanel()
+  fireEvent.change(getByLabelText('전환 효과'), { target: { value: 'fade' } })
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  expect((applies[0]![0].doc as DeckDoc).slides[0]!.transition).toBe('fade')
+})
+
+test('같은 전환 값(없음) 재선택은 디스패치하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderPanel()
+  fireEvent.change(getByLabelText('전환 효과'), { target: { value: 'none' } })
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('노트는 입력 중 디스패치 없이 blur에서 1회 커밋된다', () => {
+  const { dispatch, getByLabelText } = renderPanel()
+  const ta = getByLabelText('노트')
+  fireEvent.change(ta, { target: { value: '첫 줄' } })
+  fireEvent.change(ta, { target: { value: '첫 줄 둘째' } })
+  expect(dispatch).not.toHaveBeenCalled()
+  fireEvent.blur(ta)
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  expect((applies[0]![0].doc as DeckDoc).slides[0]!.notes).toBe('첫 줄 둘째')
+})
+
+test('노트 Escape는 드래프트를 버리고 커밋하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderPanel()
+  const ta = getByLabelText('노트')
+  fireEvent.change(ta, { target: { value: '버릴 내용' } })
+  fireEvent.keyDown(ta, { key: 'Escape' })
+  fireEvent.blur(ta)
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('노트를 같은 내용으로 blur하면 디스패치하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderPanel()
+  const ta = getByLabelText('노트')
+  fireEvent.change(ta, { target: { value: '' } })
+  fireEvent.blur(ta)
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
 test('비정상 opacity 값은 NaN 없이 0%로 표시된다', () => {
   const DOC_BAD = parseWebdeck(`<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
