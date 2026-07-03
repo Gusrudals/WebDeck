@@ -70,7 +70,7 @@ export function ColorPopover({
         onPointerDown={(e) => {
           if (textTool) {
             e.preventDefault()
-            onActivate?.()
+            if (!open) onActivate?.()
           }
         }}
         onClick={() => setOpen((o) => !o)}
@@ -122,6 +122,7 @@ export function ColorPopover({
               onClick={() => {
                 onClear()
                 setOpen(false)
+                setHexDraft('')
               }}
             >
               {clearLabel}

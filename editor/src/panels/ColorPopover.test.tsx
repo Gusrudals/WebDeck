@@ -60,3 +60,23 @@ test('showHex=false면 hex 입력이 없다', () => {
   fireEvent.click(getByRole('button', { name: '테두리 색' }))
   expect(queryByLabelText('테두리 색 hex')).toBeNull()
 })
+
+test('textTool 모드에서 트리거로 닫을 때는 onActivate를 호출하지 않는다', () => {
+  const onActivate = vi.fn()
+  const { getByRole } = render(<ColorPopover label="글자색" onPick={vi.fn()} textTool onActivate={onActivate} />)
+  const trigger = getByRole('button', { name: '글자색' })
+  fireEvent.pointerDown(trigger)
+  fireEvent.click(trigger) // 열기
+  expect(onActivate).toHaveBeenCalledTimes(1)
+  fireEvent.pointerDown(trigger)
+  fireEvent.click(trigger) // 닫기
+  expect(onActivate).toHaveBeenCalledTimes(1)
+})
+
+test('textTool 모드에서 hex 입력에 data-text-tool이 붙는다', () => {
+  const { getByRole, getByLabelText } = render(<ColorPopover label="글자색" onPick={vi.fn()} textTool />)
+  const trigger = getByRole('button', { name: '글자색' })
+  fireEvent.pointerDown(trigger)
+  fireEvent.click(trigger)
+  expect(getByLabelText('글자색 hex').getAttribute('data-text-tool')).toBe('1')
+})
