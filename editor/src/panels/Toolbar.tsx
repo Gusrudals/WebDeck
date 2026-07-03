@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Dispatch, FocusEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { alignFrame } from '../canvas/geometry.ts'
+import { alignFrame, distributeFrames } from '../canvas/geometry.ts'
 import type { AlignMode } from '../canvas/geometry.ts'
 import {
   addElement,
@@ -10,6 +10,7 @@ import {
   moveElementZ,
   removeElement,
   setElementFrame,
+  setElementStyle,
   setTextHtml,
 } from '../model/ops.ts'
 import type { ZDirection } from '../model/ops.ts'
@@ -54,6 +55,8 @@ export function Toolbar({
   const hasSelection = hasDoc && selectedIds.length > 0
   const singleId = hasSelection && selectedIds.length === 1 ? selectedIds[0]! : null
   const editing = editingTextId !== null
+  const selectedKnown = slide?.elements.filter(isKnownElement).filter((el) => selectedIds.includes(el.id)) ?? []
+  const hasTextSelection = selectedKnown.some((el) => el.type === 'text')
   const [sizeDraft, setSizeDraft] = useState('')
 
   /** 텍스트 도구 blur 폴백 — 포커스가 도구/에디터블 밖으로 나가면 편집을 정상 종료한다 */
@@ -114,6 +117,31 @@ export function Toolbar({
     if (!doc || !slide || !singleId) return
     const d = moveElementZ(doc, slide.id, singleId, dir)
     if (d !== doc) dispatch({ type: 'APPLY_DOC', doc: d })
+  }
+
+  const verticalAlign = (justify: 'flex-start' | 'center' | 'flex-end') => {
+    if (!doc || !slide) return
+    let d = doc
+    for (const el of selectedKnown) {
+      if (el.type === 'text') {
+        d = setElementStyle(d, slide.id, el.id, {
+          display: 'flex',
+          'flex-direction': 'column',
+          'justify-content': justify,
+        })
+      }
+    }
+    if (d !== doc) dispatch({ type: 'APPLY_DOC', doc: d })
+  }
+
+  const distribute = (axis: 'x' | 'y') => {
+    if (!doc || !slide || selectedKnown.length < 3) return
+    const frames = distributeFrames(selectedKnown.map((el) => el.frame), axis)
+    let d = doc
+    selectedKnown.forEach((el, i) => {
+      d = setElementFrame(d, slide.id, el.id, frames[i]!)
+    })
+    dispatch({ type: 'APPLY_DOC', doc: d })
   }
 
   const removeSelected = () => {
@@ -239,6 +267,11 @@ export function Toolbar({
         <button type="button" disabled={!hasSelection} onClick={() => alignSelected('top')}>위</button>
         <button type="button" disabled={!hasSelection} onClick={() => alignSelected('middle')}>세로 가운데</button>
         <button type="button" disabled={!hasSelection} onClick={() => alignSelected('bottom')}>아래</button>
+        <button type="button" disabled={!hasTextSelection} onClick={() => verticalAlign('flex-start')}>텍스트 위</button>
+        <button type="button" disabled={!hasTextSelection} onClick={() => verticalAlign('center')}>텍스트 중간</button>
+        <button type="button" disabled={!hasTextSelection} onClick={() => verticalAlign('flex-end')}>텍스트 아래</button>
+        <button type="button" disabled={selectedKnown.length < 3} onClick={() => distribute('x')}>가로 분배</button>
+        <button type="button" disabled={selectedKnown.length < 3} onClick={() => distribute('y')}>세로 분배</button>
       </div>
       <div className="group" aria-label="순서">
         <button type="button" disabled={!singleId} onClick={() => zOrder('front')}>맨 앞</button>

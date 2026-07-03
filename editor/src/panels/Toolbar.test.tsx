@@ -21,6 +21,17 @@ const DOC = parseWebdeck(`<!DOCTYPE html>
 const EL_TEXT = DOC.slides[0]!.elements[0]!.id
 const EL_SHAPE = DOC.slides[0]!.elements[1]!.id
 
+const DOC3 = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="rect" style="left:0px; top:0px; width:100px; height:50px;"></div>
+<div class="el el-shape" data-shape="rect" style="left:120px; top:0px; width:100px; height:50px;"></div>
+<div class="el el-shape" data-shape="rect" style="left:500px; top:0px; width:100px; height:50px;"></div>
+</section>
+</main></body></html>`)
+
 let seq = 0
 const idGen = () => `n-${++seq}`
 
@@ -187,4 +198,34 @@ test('줄 간격 선택은 셀렉션이 걸친 문단에 적용된다', () => {
   fireEvent.change(getByLabelText('줄 간격'), { target: { value: '1.5' } })
   expect((p as HTMLElement).style.lineHeight).toBe('1.5')
   editable.remove()
+})
+
+test('텍스트 중간 정렬은 텍스트 요소에만 flex 스타일을 적용한다', () => {
+  const { dispatch, getByRole } = renderToolbar({ selectedIds: [EL_TEXT, EL_SHAPE] })
+  fireEvent.click(getByRole('button', { name: '텍스트 중간' }))
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[0]).toMatchObject({
+    extraStyle: { display: 'flex', 'flex-direction': 'column', 'justify-content': 'center' },
+  })
+  const shape = doc.slides[0]!.elements[1]!
+  expect(shape.type !== 'opaque' && 'display' in shape.extraStyle).toBe(false)
+})
+
+test('텍스트 선택이 없으면 세로 정렬 버튼은 비활성이다', () => {
+  const { getByRole } = renderToolbar({ selectedIds: [EL_SHAPE] })
+  expect((getByRole('button', { name: '텍스트 위' }) as HTMLButtonElement).disabled).toBe(true)
+})
+
+test('가로 분배는 3개 이상 선택에서 간격을 균등화하고 1회 커밋한다', () => {
+  const ids = DOC3.slides[0]!.elements.map((e) => e.id)
+  const { dispatch, getByRole } = renderToolbar({ doc: DOC3, selectedIds: ids })
+  fireEvent.click(getByRole('button', { name: '가로 분배' }))
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  expect((applies[0]![0].doc as DeckDoc).slides[0]!.elements[1]).toMatchObject({ frame: { left: 250 } })
+})
+
+test('2개 선택이면 분배 버튼이 비활성이다', () => {
+  const { getByRole } = renderToolbar({ selectedIds: [EL_TEXT, EL_SHAPE] })
+  expect((getByRole('button', { name: '가로 분배' }) as HTMLButtonElement).disabled).toBe(true)
 })
