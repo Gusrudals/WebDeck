@@ -16,8 +16,8 @@ import type { ZDirection } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import {
-  FONT_FAMILIES, FONT_SIZES, clampFontSize, execColor, execFontName, execFontSize, execFormat, execList,
-  focusEditable, restoreSelection, saveSelection,
+  FONT_FAMILIES, FONT_SIZES, LINE_HEIGHTS, clampFontSize, execColor, execFontName, execFontSize, execFormat, execList,
+  focusEditable, restoreSelection, saveSelection, setLineHeight,
 } from './format.ts'
 import { ColorPopover } from './ColorPopover.tsx'
 
@@ -208,6 +208,26 @@ export function Toolbar({
         />
         <button type="button" aria-label="글머리 기호" title="글머리 기호" disabled={!editing} onPointerDown={keepFocus} onClick={() => execList('ul')}>••</button>
         <button type="button" aria-label="번호 매기기" title="번호 매기기" disabled={!editing} onPointerDown={keepFocus} onClick={() => execList('ol')}>1.</button>
+        <select
+          aria-label="줄 간격"
+          data-text-tool="1"
+          disabled={!editing}
+          value=""
+          onFocus={saveSelection}
+          onBlur={commitEditingFromTool}
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            if (!v) return
+            restoreSelection()
+            setLineHeight(v)
+            focusEditable()
+          }}
+        >
+          <option value="" disabled>줄간격</option>
+          {LINE_HEIGHTS.map((v) => (
+            <option key={v} value={v}>{v}</option>
+          ))}
+        </select>
         <button type="button" aria-label="왼쪽 정렬" title="왼쪽 정렬" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('justifyLeft')}>⇤</button>
         <button type="button" aria-label="가운데 정렬" title="가운데 정렬" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('justifyCenter')}>⇔</button>
         <button type="button" aria-label="오른쪽 정렬" title="오른쪽 정렬" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('justifyRight')}>⇥</button>

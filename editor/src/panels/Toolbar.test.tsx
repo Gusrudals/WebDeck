@@ -171,3 +171,20 @@ test('목록 버튼은 목록 execCommand를 실행한다', () => {
   fireEvent.click(getByRole('button', { name: '번호 매기기' }))
   expect(document.execCommand).toHaveBeenCalledWith('insertOrderedList')
 })
+
+test('줄 간격 선택은 셀렉션이 걸친 문단에 적용된다', () => {
+  const editable = document.createElement('div')
+  editable.className = 'text-editable'
+  editable.innerHTML = '<p>하나</p>'
+  document.body.appendChild(editable)
+  const p = editable.querySelector('p')!
+  const range = document.createRange()
+  range.selectNodeContents(p)
+  const sel = window.getSelection()!
+  sel.removeAllRanges()
+  sel.addRange(range)
+  const { getByLabelText } = renderToolbar({ selectedIds: [EL_TEXT], editingTextId: EL_TEXT })
+  fireEvent.change(getByLabelText('줄 간격'), { target: { value: '1.5' } })
+  expect((p as HTMLElement).style.lineHeight).toBe('1.5')
+  editable.remove()
+})

@@ -1,4 +1,5 @@
 export const FONT_SIZES = [12, 16, 20, 28, 40, 56]
+export const LINE_HEIGHTS = [1, 1.15, 1.5, 2]
 
 type FormatCommand = 'bold' | 'italic' | 'underline' | 'justifyLeft' | 'justifyCenter' | 'justifyRight'
 
@@ -76,4 +77,20 @@ export function restoreSelection(): void {
 /** 편집 중인 텍스트 상자로 포커스를 되돌린다 — 편집 요소는 동시에 1개뿐 */
 export function focusEditable(): void {
   document.querySelector<HTMLElement>('.text-editable')?.focus()
+}
+
+/** 셀렉션이 걸친 문단(p/li)에 line-height 지정 — execCommand에 없는 기능이라 직접 처리 */
+export function setLineHeight(value: number): void {
+  const sel = window.getSelection?.()
+  if (!sel || sel.rangeCount === 0) return
+  const range = sel.getRangeAt(0)
+  const anchor = range.commonAncestorContainer
+  const anchorEl = anchor instanceof Element ? anchor : anchor.parentElement
+  const editable = anchorEl?.closest('.text-editable')
+  if (!editable) return
+  const blocks = Array.from(editable.querySelectorAll<HTMLElement>('p, li'))
+  // happy-dom 등 intersectsNode 미구현 환경은 포함 관계로 폴백
+  const intersects = (b: HTMLElement) =>
+    typeof range.intersectsNode === 'function' ? range.intersectsNode(b) : b.contains(anchor) || b === anchorEl
+  for (const b of blocks.filter(intersects)) b.style.lineHeight = String(value)
 }

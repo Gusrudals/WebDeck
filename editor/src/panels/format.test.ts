@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { FONT_FAMILIES, clampFontSize, execFontName, execList, focusEditable, restoreSelection, saveSelection } from './format.ts'
+import { FONT_FAMILIES, clampFontSize, execFontName, execList, focusEditable, restoreSelection, saveSelection, setLineHeight } from './format.ts'
 
 describe('셀렉션 저장/복원', () => {
   test('셀렉션이 없어도 안전하다', () => {
@@ -68,5 +68,46 @@ describe('폰트·크기 유틸', () => {
       ['fontName', false, '"Dotum", sans-serif'],
       ['styleWithCSS', false, 'false'],
     ])
+  })
+})
+
+describe('setLineHeight', () => {
+  test('캐럿이 있는 문단에만 line-height를 적용한다', () => {
+    const editable = document.createElement('div')
+    editable.className = 'text-editable'
+    editable.innerHTML = '<p>하나</p><p>둘</p>'
+    document.body.appendChild(editable)
+    const first = editable.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(first)
+    range.collapse(true)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+    setLineHeight(1.5)
+    expect((first as HTMLElement).style.lineHeight).toBe('1.5')
+    const second = editable.querySelectorAll('p')[1] as HTMLElement
+    expect(second.style.lineHeight).toBe('')
+    editable.remove()
+  })
+
+  test('편집 영역 밖 셀렉션이면 아무것도 하지 않는다', () => {
+    const div = document.createElement('div')
+    div.innerHTML = '<p>외부</p>'
+    document.body.appendChild(div)
+    const p = div.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(p)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+    expect(() => setLineHeight(2)).not.toThrow()
+    expect((p as HTMLElement).style.lineHeight).toBe('')
+    div.remove()
+  })
+
+  test('셀렉션이 없으면 no-op이다', () => {
+    window.getSelection()?.removeAllRanges()
+    expect(() => setLineHeight(1.15)).not.toThrow()
   })
 })
