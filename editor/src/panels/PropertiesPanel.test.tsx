@@ -203,3 +203,40 @@ test('인식할 수 없는 테두리 값은 보존 안내를 보여준다', () =
   const { getByText } = renderPanel({ doc: DOC_STYLED, selectedIds: [EL_CUSTOM_BORDER] })
   expect(getByText(/사용자 지정/)).toBeTruthy()
 })
+
+test('그림자 약하게는 box-shadow를 설정한다', () => {
+  const { dispatch, getByRole } = renderPanel({ selectedIds: [EL_SHAPE] })
+  fireEvent.click(getByRole('button', { name: '그림자 약하게' }))
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[1]).toMatchObject({ extraStyle: { 'box-shadow': '0 2px 6px rgba(0,0,0,0.25)' } })
+})
+
+test('그림자 없음은 box-shadow 키를 제거한다', () => {
+  const { dispatch, getByRole } = renderPanel({ doc: DOC_STYLED, selectedIds: [EL_BORDERED] })
+  fireEvent.click(getByRole('button', { name: '그림자 없음' }))
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type !== 'opaque' && 'box-shadow' in el.extraStyle).toBe(false)
+})
+
+test('투명도 슬라이더는 조작 중 커밋하지 않고 pointerup에 1회 커밋한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  const range = getByLabelText('투명도')
+  fireEvent.change(range, { target: { value: '30' } })
+  fireEvent.change(range, { target: { value: '40' } })
+  expect(dispatch).not.toHaveBeenCalled()
+  fireEvent.pointerUp(range)
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  expect((applies[0]![0].doc as DeckDoc).slides[0]!.elements[1]).toMatchObject({ extraStyle: { opacity: '0.6' } })
+})
+
+test('투명도 0%는 opacity 키를 제거한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ doc: DOC_STYLED, selectedIds: [EL_BORDERED] })
+  const range = getByLabelText('투명도')
+  fireEvent.change(range, { target: { value: '0' } })
+  fireEvent.pointerUp(range)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type !== 'opaque' && 'opacity' in el.extraStyle).toBe(false)
+})

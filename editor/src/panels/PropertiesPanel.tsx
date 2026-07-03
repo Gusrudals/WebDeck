@@ -8,6 +8,8 @@ import type { Frame } from '../model/types.ts'
 import { ColorPopover } from './ColorPopover.tsx'
 
 const BORDER_PATTERN = /^(\d+)px (solid|dashed) (\S+)$/
+const SHADOW_SOFT = '0 2px 6px rgba(0,0,0,0.25)'
+const SHADOW_STRONG = '0 6px 16px rgba(0,0,0,0.35)'
 
 /** '1px solid #000' 형태만 인식 — 그 외 값은 null(사용자 지정 보존) */
 function parseBorder(value: string | undefined): { width: number; style: 'solid' | 'dashed'; color: string } | null {
@@ -21,6 +23,8 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
   const { doc, currentSlideIndex, selectedIds } = state
   /** 배경색 피커 조작 중 임시값 — OS 피커 드래그 동안 onChange가 연속 발화하므로 blur 시 1회만 커밋 */
   const [bgDraft, setBgDraft] = useState<string | null>(null)
+  /** 투명도 슬라이더 조작 중 임시값 — pointerup/blur에서 1회 커밋 */
+  const [opacityDraft, setOpacityDraft] = useState<string | null>(null)
   const slide = doc?.slides[currentSlideIndex] ?? null
   if (!doc || !slide) return <aside className="props" aria-label="속성" />
   const selectedKnown = slide.elements.filter(isKnownElement).filter((el) => selectedIds.includes(el.id))
@@ -54,6 +58,14 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
     let d = doc
     for (const el of selectedKnown) d = setElementStyle(d, slide.id, el.id, patch)
     dispatch({ type: 'APPLY_DOC', doc: d })
+  }
+  const opacityShown = opacityDraft ?? (first ? String(Math.round((1 - Number(first.extraStyle['opacity'] ?? '1')) * 100)) : '0')
+  const commitOpacity = () => {
+    if (opacityDraft === null) return
+    const t = Math.max(0, Math.min(100, Number(opacityDraft)))
+    setOpacityDraft(null)
+    if (!Number.isFinite(t)) return
+    applyStyle({ opacity: t === 0 ? null : String(Math.round((1 - t / 100) * 100) / 100) })
   }
   const border = first ? parseBorder(first.extraStyle['border']) : null
 
@@ -136,6 +148,28 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
           {first.extraStyle['border'] !== undefined && !border && (
             <p className="prop-note">테두리: 사용자 지정 값 보존됨</p>
           )}
+          <div className="prop-row">
+            그림자
+            <span className="btn-row">
+              <button type="button" aria-label="그림자 없음" onClick={() => applyStyle({ 'box-shadow': null })}>없음</button>
+              <button type="button" aria-label="그림자 약하게" onClick={() => applyStyle({ 'box-shadow': SHADOW_SOFT })}>약하게</button>
+              <button type="button" aria-label="그림자 강하게" onClick={() => applyStyle({ 'box-shadow': SHADOW_STRONG })}>강하게</button>
+            </span>
+          </div>
+          <label className="prop-row">
+            투명도
+            <input
+              type="range"
+              aria-label="투명도"
+              min="0"
+              max="100"
+              value={opacityShown}
+              onChange={(e) => setOpacityDraft(e.target.value)}
+              onPointerUp={commitOpacity}
+              onBlur={commitOpacity}
+            />
+            <span className="opacity-value">{opacityShown}%</span>
+          </label>
         </section>
       )}
     </aside>
