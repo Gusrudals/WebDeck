@@ -6,6 +6,7 @@ import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import type { Frame } from '../model/types.ts'
 import { ColorPopover } from './ColorPopover.tsx'
+import { ThemeSection } from './ThemeSection.tsx'
 
 const BORDER_PATTERN = /^(\d+)px (solid|dashed) (\S+)$/
 const SHADOW_SOFT = '0 2px 6px rgba(0,0,0,0.25)'
@@ -37,6 +38,7 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
     const bgValue = slide.bg && /^#[0-9a-fA-F]{6}$/.test(slide.bg) ? slide.bg : '#ffffff'
     return (
       <aside className="props" aria-label="속성">
+        <ThemeSection doc={doc} dispatch={dispatch} />
         <h2>슬라이드</h2>
         <label className="prop-row">
           배경색
