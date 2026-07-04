@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import { MIN_SIZE } from '../canvas/geometry.ts'
-import { setElementFrame, setElementStyle, setSlideBg, setSlideNotes, setSlideTransition } from '../model/ops.ts'
+import { setElementFrame, setElementStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import type { Frame } from '../model/types.ts'
 import { ColorPopover } from './ColorPopover.tsx'
+import { SlideBgSection } from './SlideBgSection.tsx'
 import { ThemeSection } from './ThemeSection.tsx'
 
 const BORDER_PATTERN = /^(\d+)px (solid|dashed) (\S+)$/
@@ -22,8 +23,6 @@ function parseBorder(value: string | undefined): { width: number; style: 'solid'
 
 export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispatch: Dispatch<EditorAction> }) {
   const { doc, currentSlideIndex, selectedIds } = state
-  /** 배경색 피커 조작 중 임시값 — OS 피커 드래그 동안 onChange가 연속 발화하므로 blur 시 1회만 커밋 */
-  const [bgDraft, setBgDraft] = useState<string | null>(null)
   /** 투명도 슬라이더 조작 중 임시값 — pointerup/blur에서 1회 커밋 */
   const [opacityDraft, setOpacityDraft] = useState<string | null>(null)
   /** 노트 드래프트 — 슬라이드 id를 함께 저장해 슬라이드 전환 시 다른 슬라이드에 커밋되는 것을 방지 */
@@ -35,26 +34,11 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
   const selectedKnown = slide.elements.filter(isKnownElement).filter((el) => selectedIds.includes(el.id))
 
   if (selectedKnown.length === 0) {
-    const bgValue = slide.bg && /^#[0-9a-fA-F]{6}$/.test(slide.bg) ? slide.bg : '#ffffff'
     return (
       <aside className="props" aria-label="속성">
         <ThemeSection doc={doc} dispatch={dispatch} />
         <h2>슬라이드</h2>
-        <label className="prop-row">
-          배경색
-          <input
-            type="color"
-            aria-label="배경색"
-            value={bgDraft ?? bgValue}
-            onChange={(e) => setBgDraft(e.target.value)}
-            onBlur={() => {
-              if (bgDraft !== null && bgDraft !== bgValue) {
-                dispatch({ type: 'APPLY_DOC', doc: setSlideBg(doc, slide.id, bgDraft) })
-              }
-              setBgDraft(null)
-            }}
-          />
-        </label>
+        <SlideBgSection key={slide.id} doc={doc} slide={slide} dispatch={dispatch} />
         <label className="prop-row">
           전환 효과
           <select

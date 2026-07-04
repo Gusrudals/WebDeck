@@ -90,3 +90,16 @@ export async function saveAsHtmlFile(suggestedName: string, html: string): Promi
   if (!(await saveToHandle(handle, html))) return 'unsupported'
   return { handle, name: handle.name }
 }
+
+/** 파일을 data URI 문자열로 읽는다 (배경 이미지 임베딩용) */
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result)
+      else reject(new Error('읽기 결과가 문자열이 아닙니다'))
+    }
+    reader.onerror = () => reject(new Error('파일을 읽지 못했습니다'))
+    reader.readAsDataURL(file)
+  })
+}
