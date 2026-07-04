@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import { MIN_SIZE } from '../canvas/geometry.ts'
-import { setElementFrame, setElementStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
+import { setElementFrame, setElementRotation, setElementStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
+import { normalizeAngle } from '../model/rotation.ts'
+import { isLinear } from '../model/shapeSvg.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import type { Frame } from '../model/types.ts'
@@ -101,6 +103,9 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
     applyStyle({ opacity: t === 0 ? null : String(Math.round((1 - t / 100) * 100) / 100) })
   }
   const border = first ? parseBorder(first.extraStyle['border']) : null
+  /** 전부 line/arrow 선택이면 채우기를 색(color)에 매핑하고 테두리·그림자를 숨긴다 — 혼합 선택은 기존 background 동작 유지 */
+  const allLinear = selectedKnown.length > 0 && selectedKnown.every((el) => el.type === 'shape' && isLinear(el.shape))
+  const fillKey = allLinear ? 'color' : 'background'
 
   return (
     <aside className="props" aria-label="속성">
@@ -123,6 +128,17 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
             <NumberField key={`${el.id}-y`} label="Y" value={el.frame.top} onCommit={(v) => commitFrame({ top: v })} />
             <NumberField key={`${el.id}-w`} label="너비" value={el.frame.width} onCommit={(v) => commitFrame({ width: v })} />
             <NumberField key={`${el.id}-h`} label="높이" value={el.frame.height} onCommit={(v) => commitFrame({ height: v })} />
+            <NumberField
+              key={`${el.id}-rot`}
+              label="회전"
+              value={el.rotation}
+              onCommit={(v) => {
+                const next = normalizeAngle(v)
+                if (next !== el.rotation) {
+                  dispatch({ type: 'APPLY_DOC', doc: setElementRotation(doc, slide.id, el.id, next) })
+                }
+              }}
+            />
           </section>
         )
       })()}
@@ -132,63 +148,67 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
             채우기
             <ColorPopover
               label="채우기 색"
-              value={first.extraStyle['background']}
-              onPick={(c) => applyStyle({ background: c })}
+              value={first.extraStyle[fillKey]}
+              onPick={(c) => applyStyle({ [fillKey]: c })}
               clearLabel="채우기 없음"
-              onClear={() => applyStyle({ background: null })}
+              onClear={() => applyStyle({ [fillKey]: null })}
             />
           </div>
-          <label className="prop-row">
-            테두리
-            <select
-              aria-label="테두리 두께"
-              value={border ? String(border.width) : '0'}
-              onChange={(e) => {
-                const w = Number(e.target.value)
-                if (w === 0) applyStyle({ border: null })
-                else applyStyle({ border: `${w}px ${border?.style ?? 'solid'} ${border?.color ?? '#1f2937'}` })
-              }}
-            >
-              <option value="0">없음</option>
-              <option value="1">1px</option>
-              <option value="2">2px</option>
-              <option value="4">4px</option>
-            </select>
-          </label>
-          {border && (
+          {!allLinear && (
             <>
               <label className="prop-row">
-                테두리 스타일
+                테두리
                 <select
-                  aria-label="테두리 스타일"
-                  value={border.style}
-                  onChange={(e) => applyStyle({ border: `${border.width}px ${e.target.value} ${border.color}` })}
+                  aria-label="테두리 두께"
+                  value={border ? String(border.width) : '0'}
+                  onChange={(e) => {
+                    const w = Number(e.target.value)
+                    if (w === 0) applyStyle({ border: null })
+                    else applyStyle({ border: `${w}px ${border?.style ?? 'solid'} ${border?.color ?? '#1f2937'}` })
+                  }}
                 >
-                  <option value="solid">실선</option>
-                  <option value="dashed">점선</option>
+                  <option value="0">없음</option>
+                  <option value="1">1px</option>
+                  <option value="2">2px</option>
+                  <option value="4">4px</option>
                 </select>
               </label>
+              {border && (
+                <>
+                  <label className="prop-row">
+                    테두리 스타일
+                    <select
+                      aria-label="테두리 스타일"
+                      value={border.style}
+                      onChange={(e) => applyStyle({ border: `${border.width}px ${e.target.value} ${border.color}` })}
+                    >
+                      <option value="solid">실선</option>
+                      <option value="dashed">점선</option>
+                    </select>
+                  </label>
+                  <div className="prop-row">
+                    테두리 색
+                    <ColorPopover
+                      label="테두리 색"
+                      value={border.color}
+                      onPick={(c) => applyStyle({ border: `${border.width}px ${border.style} ${c}` })}
+                    />
+                  </div>
+                </>
+              )}
+              {first.extraStyle['border'] !== undefined && !border && (
+                <p className="prop-note">테두리: 사용자 지정 값 보존됨</p>
+              )}
               <div className="prop-row">
-                테두리 색
-                <ColorPopover
-                  label="테두리 색"
-                  value={border.color}
-                  onPick={(c) => applyStyle({ border: `${border.width}px ${border.style} ${c}` })}
-                />
+                그림자
+                <span className="btn-row">
+                  <button type="button" aria-label="그림자 없음" onClick={() => applyStyle({ 'box-shadow': null })}>없음</button>
+                  <button type="button" aria-label="그림자 약하게" onClick={() => applyStyle({ 'box-shadow': SHADOW_SOFT })}>약하게</button>
+                  <button type="button" aria-label="그림자 강하게" onClick={() => applyStyle({ 'box-shadow': SHADOW_STRONG })}>강하게</button>
+                </span>
               </div>
             </>
           )}
-          {first.extraStyle['border'] !== undefined && !border && (
-            <p className="prop-note">테두리: 사용자 지정 값 보존됨</p>
-          )}
-          <div className="prop-row">
-            그림자
-            <span className="btn-row">
-              <button type="button" aria-label="그림자 없음" onClick={() => applyStyle({ 'box-shadow': null })}>없음</button>
-              <button type="button" aria-label="그림자 약하게" onClick={() => applyStyle({ 'box-shadow': SHADOW_SOFT })}>약하게</button>
-              <button type="button" aria-label="그림자 강하게" onClick={() => applyStyle({ 'box-shadow': SHADOW_STRONG })}>강하게</button>
-            </span>
-          </div>
           <label className="prop-row">
             투명도
             <input

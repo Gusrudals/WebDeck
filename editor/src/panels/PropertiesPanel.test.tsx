@@ -26,10 +26,20 @@ const DOC_STYLED = parseWebdeck(`<!DOCTYPE html>
 </section>
 </main></body></html>`)
 
+const DOC_LINE = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="line" style="left:10px; top:10px; width:320px; height:8px; color:#374151;"></div>
+</section>
+</main></body></html>`)
+
 const EL_TEXT = DOC.slides[0]!.elements[0]!.id
 const EL_SHAPE = DOC.slides[0]!.elements[1]!.id
 const EL_BORDERED = DOC_STYLED.slides[0]!.elements[0]!.id
 const EL_CUSTOM_BORDER = DOC_STYLED.slides[0]!.elements[1]!.id
+const EL_LINE = DOC_LINE.slides[0]!.elements[0]!.id
 
 function makeState(over: Partial<EditorState> = {}): EditorState {
   const opened = editorReducer(initialEditorState, {
@@ -50,6 +60,11 @@ function renderPanel(over: Partial<EditorState> = {}) {
 function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
   const action = dispatch.mock.calls.map(([a]) => a).find((a) => a?.type === 'APPLY_DOC')
   return action ? (action.doc as DeckDoc) : null
+}
+
+/** line 요소 단일 선택 픽스처 */
+function renderLinePanel(over: Partial<EditorState> = {}) {
+  return renderPanel({ doc: DOC_LINE, selectedIds: [EL_LINE], ...over })
 }
 
 test('선택이 없으면 슬라이드 모드 — 배경색 입력을 보여준다', () => {
@@ -143,6 +158,26 @@ test('다중 선택 시 위치·크기 섹션은 없다', () => {
   expect(queryByLabelText('X')).toBeNull()
 })
 
+test('회전 입력은 blur에서 1회 커밋하고 [0,360)으로 정규화한다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_TEXT] })
+  const input = getByLabelText('회전')
+  fireEvent.change(input, { target: { value: '370' } })
+  expect(dispatch).not.toHaveBeenCalled()
+  fireEvent.blur(input)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements.find((e) => e.id === EL_TEXT)!
+  if (el.type === 'opaque') return
+  expect(el.rotation).toBe(10)
+})
+
+test('같은 회전 값 커밋은 디스패치하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderPanel({ selectedIds: [EL_TEXT] })
+  const input = getByLabelText('회전')
+  fireEvent.change(input, { target: { value: '0' } })
+  fireEvent.blur(input)
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
 test('편집 중 선택이 바뀌면 드래프트가 새 요소로 넘어가지 않는다', () => {
   const dispatch = vi.fn()
   const { getByLabelText, rerender } = render(
@@ -175,6 +210,58 @@ test('채우기 없음은 background 키를 제거한다', () => {
   const doc = appliedDoc(dispatch)!
   const el = doc.slides[0]!.elements[1]!
   expect(el.type !== 'opaque' && 'background' in el.extraStyle).toBe(false)
+})
+
+test('선 요소 선택 시 채우기는 color를 패치하고 테두리·그림자는 숨긴다', () => {
+  const { dispatch, queryByText, getByRole, getAllByRole } = renderLinePanel()
+  expect(queryByText('테두리')).toBeNull()
+  expect(queryByText('그림자')).toBeNull()
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  fireEvent.click(getAllByRole('button', { name: /^색 #/ })[0]!)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  if (el.type === 'opaque') return
+  expect(el.extraStyle['color']).toBeTruthy()
+  expect(el.extraStyle['background']).toBeUndefined()
+})
+
+test('선 요소 선택 시 채우기 표시값은 extraStyle color에서 읽는다', () => {
+  const { getByRole } = renderLinePanel()
+  const trigger = getByRole('button', { name: '채우기 색' })
+  const chip = trigger.querySelector('.color-chip') as HTMLElement
+  expect(chip.style.background).toBe('#374151')
+})
+
+test('선 요소 선택 시 채우기 없음도 color 키를 제거한다', () => {
+  const { dispatch, getByRole } = renderLinePanel()
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  fireEvent.click(getByRole('button', { name: '채우기 없음' }))
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type !== 'opaque' && 'color' in el.extraStyle).toBe(false)
+})
+
+test('혼합 선택(선+상자)이면 채우기는 기존대로 background를 패치한다', () => {
+  // 단일 line 선택(EL_LINE)은 allLinear=true 경로 — 대조용으로 line+rect를 함께 선택한 혼합 문서를 사용
+  const mixedDoc = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="line" style="left:10px; top:10px; width:320px; height:8px; color:#374151;"></div>
+<div class="el el-shape" data-shape="rect" style="left:300px; top:300px; width:80px; height:80px; background:red;"></div>
+</section>
+</main></body></html>`)
+  const lineId = mixedDoc.slides[0]!.elements[0]!.id
+  const rectId = mixedDoc.slides[0]!.elements[1]!.id
+  const { dispatch, getByRole, getByText } = renderPanel({ doc: mixedDoc, selectedIds: [lineId, rectId] })
+  expect(getByText('테두리')).toBeTruthy()
+  expect(getByText('그림자')).toBeTruthy()
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  fireEvent.click(getByRole('button', { name: '색 #1a56db' }))
+  const doc = appliedDoc(dispatch)!
+  expect(doc.slides[0]!.elements[0]).toMatchObject({ extraStyle: { background: '#1a56db' } })
+  expect(doc.slides[0]!.elements[1]).toMatchObject({ extraStyle: { background: '#1a56db' } })
 })
 
 test('테두리 두께 선택은 기본값으로 border를 합성한다', () => {
