@@ -11,13 +11,14 @@ function toReactKeys(style: Record<string, string>): Record<string, string> {
   return out
 }
 
-export function styleFromModel(frame: Frame, extraStyle: Record<string, string>): CSSProperties {
+export function styleFromModel(frame: Frame, extraStyle: Record<string, string>, rotation = 0): CSSProperties {
   return {
     position: 'absolute',
     left: `${frame.left}px`,
     top: `${frame.top}px`,
     width: `${frame.width}px`,
     height: `${frame.height}px`,
+    ...(rotation !== 0 ? { transform: `rotate(${rotation}deg)` } : {}),
     ...toReactKeys(extraStyle),
   } as CSSProperties
 }

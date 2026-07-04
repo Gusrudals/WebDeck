@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import { SHAPE_INNER_HTML, isLinear } from '../model/shapeSvg.ts'
 import type { SlideElement } from '../model/types.ts'
 import { cssTextToReact, styleFromModel } from './styleFromModel.ts'
 import { TextEditable } from './TextEditable.tsx'
@@ -19,7 +20,7 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
     case 'text': {
       if (interaction?.editing) {
         return (
-          <div className="el el-text editing" style={styleFromModel(element.frame, element.extraStyle)}>
+          <div className="el el-text editing" style={styleFromModel(element.frame, element.extraStyle, element.rotation)}>
             <TextEditable html={element.html} onCommit={interaction.onTextCommit} />
           </div>
         )
@@ -27,7 +28,7 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
       return (
         <div
           className="el el-text"
-          style={styleFromModel(element.frame, element.extraStyle)}
+          style={styleFromModel(element.frame, element.extraStyle, element.rotation)}
           dangerouslySetInnerHTML={{ __html: element.html }}
           {...handlers}
         />
@@ -35,12 +36,22 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
     }
     case 'image':
       return (
-        <div className="el el-image" style={styleFromModel(element.frame, element.extraStyle)} {...handlers}>
+        <div className="el el-image" style={styleFromModel(element.frame, element.extraStyle, element.rotation)} {...handlers}>
           <img src={element.src} alt={element.alt} style={cssTextToReact(element.imgStyle)} />
         </div>
       )
     case 'shape':
-      return <div className="el el-shape" style={styleFromModel(element.frame, element.extraStyle)} {...handlers} />
+      if (isLinear(element.shape)) {
+        return (
+          <div
+            className="el el-shape"
+            style={styleFromModel(element.frame, element.extraStyle, element.rotation)}
+            dangerouslySetInnerHTML={{ __html: SHAPE_INNER_HTML[element.shape as 'line' | 'arrow'] }}
+            {...handlers}
+          />
+        )
+      }
+      return <div className="el el-shape" style={styleFromModel(element.frame, element.extraStyle, element.rotation)} {...handlers} />
     case 'opaque':
       return <div className="el-opaque" dangerouslySetInnerHTML={{ __html: element.html }} />
   }
