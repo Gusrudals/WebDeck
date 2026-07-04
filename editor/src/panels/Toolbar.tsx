@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dispatch, FocusEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { alignFrame, distributeFrames } from '../canvas/geometry.ts'
 import type { AlignMode } from '../canvas/geometry.ts'
 import {
   addElement,
   createImageElement,
-  createShapeElement,
+  createShape,
   createTextElement,
   moveElementZ,
   removeElement,
@@ -15,6 +15,7 @@ import {
 } from '../model/ops.ts'
 import type { ZDirection } from '../model/ops.ts'
 import { isKnownElement } from '../model/types.ts'
+import type { ShapeKind } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import {
   FONT_FAMILIES, FONT_SIZES, LINE_HEIGHTS, clampFontSize, execColor, execFontName, execFontSize, execFormat, execList,
@@ -58,6 +59,24 @@ export function Toolbar({
   const selectedKnown = slide?.elements.filter(isKnownElement).filter((el) => selectedIds.includes(el.id)) ?? []
   const hasTextSelection = selectedKnown.some((el) => el.type === 'text')
   const [sizeDraft, setSizeDraft] = useState('')
+  const [shapeOpen, setShapeOpen] = useState(false)
+  const shapeRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!shapeOpen) return
+    const onOutside = (e: PointerEvent) => {
+      if (shapeRef.current && !shapeRef.current.contains(e.target as Node)) setShapeOpen(false)
+    }
+    window.addEventListener('pointerdown', onOutside)
+    return () => window.removeEventListener('pointerdown', onOutside)
+  }, [shapeOpen])
+
+  const SHAPE_MENU: { kind: ShapeKind; label: string }[] = [
+    { kind: 'rect', label: '사각형' },
+    { kind: 'rounded', label: '둥근 사각형' },
+    { kind: 'ellipse', label: '타원' },
+    { kind: 'line', label: '선' },
+    { kind: 'arrow', label: '화살표' },
+  ]
 
   /** 텍스트 도구 blur 폴백 — 포커스가 도구/에디터블 밖으로 나가면 편집을 정상 종료한다 */
   const commitEditingFromTool = (e: FocusEvent<HTMLElement>) => {
@@ -87,9 +106,12 @@ export function Toolbar({
     dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
   }
 
-  const insertShape = () => {
+  const insertShapeKind = (kind: ShapeKind) => {
     if (!doc || !slide) return
-    const el = createShapeElement(idGen, { left: 540, top: 300, width: 200, height: 120 }, 'var(--wd-accent)')
+    const frame = kind === 'line' || kind === 'arrow'
+      ? { left: 480, top: 356, width: 320, height: 8 }
+      : { left: 520, top: 280, width: 240, height: 160 }
+    const el = createShape(idGen, kind, frame)
     dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
   }
 
@@ -165,7 +187,18 @@ export function Toolbar({
     <div className="toolbar" role="toolbar" aria-label="편집 도구">
       <div className="group" aria-label="삽입">
         <button type="button" disabled={!hasDoc} onClick={insertText}>텍스트 상자</button>
-        <button type="button" disabled={!hasDoc} onClick={insertShape}>도형</button>
+        <div className="layout-popover-root" ref={shapeRef}>
+          <button type="button" disabled={!hasDoc} onClick={() => setShapeOpen((o) => !o)}>도형</button>
+          {shapeOpen && (
+            <div className="layout-popover" role="menu">
+              {SHAPE_MENU.map((s) => (
+                <button key={s.kind} type="button" role="menuitem" onClick={() => { setShapeOpen(false); insertShapeKind(s.kind) }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button type="button" disabled={!hasDoc} onClick={insertImage}>이미지</button>
       </div>
       <div className="group" aria-label="텍스트 서식">

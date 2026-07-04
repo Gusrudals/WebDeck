@@ -72,11 +72,45 @@ test('텍스트 상자 삽입은 새 요소를 추가하고 선택한다', () =>
   expect(call.select).toEqual([added.id])
 })
 
-test('도형 삽입은 사각형을 추가한다', () => {
+test('도형 팝오버에서 사각형 선택은 사각형을 추가한다', () => {
   const { dispatch, getByRole } = renderToolbar()
   fireEvent.click(getByRole('button', { name: '도형' }))
+  fireEvent.click(getByRole('menuitem', { name: '사각형' }))
   const els = appliedDoc(dispatch)!.slides[0]!.elements
   expect(els[2]!.type).toBe('shape')
+})
+
+test('도형 버튼은 팝오버를 열고 5종을 보여준다', () => {
+  const { getByRole, getAllByRole, queryByRole } = renderToolbar()
+  expect(queryByRole('menu')).toBeNull()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  expect(getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['사각형', '둥근 사각형', '타원', '선', '화살표'])
+})
+
+test('타원 선택은 border-radius 50% 도형을 1 APPLY_DOC으로 삽입한다', () => {
+  const { dispatch, getByRole } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  fireEvent.click(getByRole('menuitem', { name: '타원' }))
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const doc = applies[0]![0].doc as DeckDoc
+  const added = doc.slides[0]!.elements.at(-1)!
+  expect(added.type).toBe('shape')
+  if (added.type !== 'shape') return
+  expect(added.shape).toBe('ellipse')
+  expect(added.extraStyle['border-radius']).toBe('50%')
+})
+
+test('선 선택은 320×8 선을 삽입한다', () => {
+  const { dispatch, getByRole } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  fireEvent.click(getByRole('menuitem', { name: '선' }))
+  const doc = (dispatch.mock.calls.find(([a]) => a?.type === 'APPLY_DOC')![0]).doc as DeckDoc
+  const added = doc.slides[0]!.elements.at(-1)!
+  if (added.type !== 'shape') return
+  expect(added.shape).toBe('line')
+  expect(added.frame.width).toBe(320)
+  expect(added.frame.height).toBe(8)
 })
 
 test('편집 중이 아니면 서식 버튼은 disabled다', () => {

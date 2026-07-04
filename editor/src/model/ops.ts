@@ -192,7 +192,7 @@ export function createShape(idGen: () => string, kind: ShapeKind, frame: Frame):
         : kind === 'rounded'
           ? { background: 'var(--wd-accent)', 'border-radius': '24px' }
           : { background: 'var(--wd-accent)' }
-  return { type: 'shape', id: idGen(), frame, rotation: 0, extraStyle, extraAttrs: {}, extraClasses: [], shape: kind }
+  return { type: 'shape', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle, extraAttrs: {}, extraClasses: [], shape: kind }
 }
 
 export function createImageElement(idGen: () => string, frame: Frame, src: string, alt: string): ImageElement {
