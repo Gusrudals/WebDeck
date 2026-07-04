@@ -106,8 +106,8 @@ export function moveElementZ(doc: DeckDoc, slideId: string, elementId: string, d
 
 // ---------- 슬라이드 커맨드 ----------
 
-export function addSlide(doc: DeckDoc, idGen: () => string, index?: number): DeckDoc {
-  const slide: Slide = { id: idGen(), bg: '#ffffff', transition: null, notes: '', extraAttrs: {}, extraClasses: [], elements: [] }
+export function addSlide(doc: DeckDoc, idGen: () => string, index?: number, elements: SlideElement[] = []): DeckDoc {
+  const slide: Slide = { id: idGen(), bg: '#ffffff', transition: null, notes: '', extraAttrs: {}, extraClasses: [], elements }
   const slides = doc.slides.slice()
   slides.splice(index ?? slides.length, 0, slide)
   return { ...doc, slides }
