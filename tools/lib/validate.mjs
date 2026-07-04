@@ -137,8 +137,17 @@ function validateSlide(slide, num, ctx) {
     }
 
     if (type === 'el-image') validateImage(el, label, ctx)
-    if (type === 'el-shape' && el.getAttribute('data-shape') !== 'rect') {
-      errors.push(`${label}: el-shape는 data-shape="rect"만 지원합니다 (v1)`)
+    if (type === 'el-shape') {
+      const SHAPE_KINDS = ['rect', 'ellipse', 'rounded', 'line', 'arrow']
+      const kind = el.getAttribute('data-shape')
+      if (!SHAPE_KINDS.includes(kind)) {
+        errors.push(`${label}: el-shape의 data-shape는 rect/ellipse/rounded/line/arrow만 지원합니다 (v1.1)`)
+      } else if (kind === 'line' || kind === 'arrow') {
+        const kids = el.childNodes.filter((n) => n.nodeType === 1)
+        if (kids.length > 1 || (kids.length === 1 && kids[0].rawTagName.toLowerCase() !== 'svg')) {
+          errors.push(`${label}: line/arrow 도형의 자식은 svg 1개만 허용됩니다`)
+        }
+      }
     }
   }
 }

@@ -126,3 +126,27 @@ test('data-transition은 fade/push만 허용한다', () => {
 </main></body></html>`)
   assert.deepStrictEqual(good.errors, [])
 })
+
+test('data-shape는 5종을 허용하고 그 외는 오류다', () => {
+  const wrap = (el) => `<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">${el}</section></main></body></html>`
+  for (const kind of ['rect', 'ellipse', 'rounded', 'line', 'arrow']) {
+    const r = validateWebdeck(wrap(`<div class="el el-shape" data-shape="${kind}" style="left:0px; top:0px; width:100px; height:50px;"></div>`))
+    assert.deepStrictEqual(r.errors, [], kind)
+  }
+  const bad = validateWebdeck(wrap('<div class="el el-shape" data-shape="star" style="left:0px; top:0px; width:100px; height:50px;"></div>'))
+  assert.ok(bad.errors.some((e) => e.includes('data-shape')))
+})
+
+test('line/arrow는 svg 자식 1개만 허용한다', () => {
+  const wrap = (el) => `<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">${el}</section></main></body></html>`
+  const ok = validateWebdeck(wrap('<div class="el el-shape" data-shape="line" style="left:0px; top:0px; width:100px; height:8px;"><svg></svg></div>'))
+  assert.deepStrictEqual(ok.errors, [])
+  const bad = validateWebdeck(wrap('<div class="el el-shape" data-shape="arrow" style="left:0px; top:0px; width:100px; height:8px;"><svg></svg><p>x</p></div>'))
+  assert.ok(bad.errors.some((e) => e.includes('svg')))
+})

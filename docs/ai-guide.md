@@ -16,7 +16,7 @@
 9. `el-image`에는 `<img>`가 **정확히 1개** 있어야 함 (오류)
 10. `<img>`에는 `alt` 속성 필수 (경고)
 11. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙) (오류)
-12. `el-shape`는 `data-shape="rect"`만 지원 (v1) (오류)
+12. `el-shape`의 `data-shape`는 `rect`/`ellipse`/`rounded`/`line`/`arrow` 5종 (v1.1) — line/arrow의 자식은 `<svg>` 1개만 허용 (오류)
 13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현 (오류)
 14. `data-transition`(슬라이드 전환)은 `fade`/`push`만 지원 — 선택 속성 (오류)
 
@@ -24,6 +24,8 @@
 
 `templates/minimal.html`의 `<style>`(뷰어 CSS)과 `<script>`(뷰어 스크립트) 블록을 그대로 복사하고,
 `<main class="deck">` 안에 슬라이드를 채운다. 슬라이드 배경은 `data-bg="#ffffff"` 속성으로 지정한다.
+
+배경은 단색 외에 규약 형태의 그라데이션·이미지도 지원한다 — `data-bg="linear-gradient(180deg, #1a56db, #e8f0fe)"`(각도는 0/90/180/270deg, 색은 #rrggbb 2개) 또는 `data-bg="url(data:image/png;base64,...) center / cover no-repeat"`. 이 정확한 형태여야 에디터 배경 UI에서 편집 가능하다(다른 형태는 보존만 됨).
 
 슬라이드에는 선택 속성 2개를 쓸 수 있다: `data-transition="fade|push"`(발표 전환 효과),
 `data-notes="평문"`(발표 노트). 문서를 브라우저로 열면 우상단 "발표" 버튼(또는 `P` 키)으로
@@ -74,6 +76,14 @@
 
 ```html
 <div class="el el-shape" data-shape="rect" style="left:96px; top:220px; width:344px; height:300px; background:var(--wd-accent);"></div>
+```
+
+**도형 변형·회전 (v1.1)** — 타원·둥근 사각형은 인라인 `border-radius`를 함께 지정하고, 회전은 `transform: rotate(<n>deg)`(정확히 이 형태)로 지정한다. 선·화살표의 내부 SVG는 에디터가 정준형으로 재생성하므로 비워 두거나 임의로 넣어도 된다:
+
+```html
+<div class="el el-shape" data-shape="ellipse" style="left:96px; top:200px; width:240px; height:160px; background:var(--wd-accent); border-radius:50%;"></div>
+<div class="el el-shape" data-shape="rounded" style="left:96px; top:200px; width:240px; height:160px; background:var(--wd-accent); border-radius:24px;"></div>
+<div class="el el-shape" data-shape="arrow" style="left:96px; top:400px; width:320px; height:8px; color:#374151; transform:rotate(45deg);"></div>
 ```
 
 ## 레이아웃 레시피 (검증된 좌표)
