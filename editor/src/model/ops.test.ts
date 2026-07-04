@@ -12,6 +12,7 @@ import {
   removeElement,
   removeSlide,
   setElementFrame,
+  setElementRotation,
   setElementStyle,
   setSlideNotes,
   setSlideTransition,
@@ -33,8 +34,8 @@ function fixture(): DeckDoc {
     extraAttrs: {},
     extraClasses: ['intro'],
     elements: [
-      { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, extraStyle: {}, extraAttrs: {}, extraClasses: [], shape: 'rect' }, // wd-2
-      { type: 'text', id: gen(), frame: { left: 10, top: 60, width: 200, height: 80 }, extraStyle: {}, extraAttrs: {}, extraClasses: [], html: '<p>a</p>' }, // wd-3
+      { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], shape: 'rect' }, // wd-2
+      { type: 'text', id: gen(), frame: { left: 10, top: 60, width: 200, height: 80 }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], html: '<p>a</p>' }, // wd-3
       { type: 'opaque', id: gen(), html: '<div class="x"></div>' }, // wd-4
     ],
   }
@@ -211,5 +212,26 @@ describe('setSlideTransition / setSlideNotes', () => {
     expect(out.slides[0]!.extraAttrs['data-transition']).toBeUndefined()
     expect(checkRoundTrip(out)).toBeNull()
     expect(serializeWebdeck(out).match(/data-transition/g)).toHaveLength(1)
+  })
+})
+
+const P6_WRAP = (section: string) => `<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+${section}
+</main></body></html>`
+
+describe('setElementRotation', () => {
+  test('정규화해 설정하고 extraStyle의 transform 잔재를 제거한다', () => {
+    const doc = parseWebdeck(P6_WRAP('<section class="slide"><div class="el el-text" style="left:0px; top:0px; width:100px; height:50px; transform: rotate(5deg) scale(2);"><p>x</p></div></section>'))
+    const id = doc.slides[0]!.elements[0]!.id
+    const out = setElementRotation(doc, doc.slides[0]!.id, id, 370)
+    const el = out.slides[0]!.elements[0]!
+    if (el.type !== 'text') return
+    expect(el.rotation).toBe(10)
+    expect(el.extraStyle['transform']).toBeUndefined()
+    expect(checkRoundTrip(out)).toBeNull()
+    expect(serializeWebdeck(out).match(/transform/g)).toHaveLength(1)
   })
 })

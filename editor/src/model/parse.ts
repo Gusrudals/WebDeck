@@ -1,4 +1,5 @@
 import { createIdGen } from './id.ts'
+import { ROTATE_PATTERN, normalizeAngle } from './rotation.ts'
 import { parseInlineStyle } from './style.ts'
 import type { DeckDoc, Frame, Slide, SlideElement } from './types.ts'
 
@@ -102,9 +103,15 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
   const frame = readFrame(style)
   if (!frame) return opaque()
 
+  const rawTransform = style['transform']
+  const rotateMatch = rawTransform !== undefined ? ROTATE_PATTERN.exec(rawTransform.trim()) : null
+  const rotation = rotateMatch ? normalizeAngle(parseFloat(rotateMatch[1]!)) : 0
+
   const extraStyle: Record<string, string> = {}
   for (const [prop, value] of Object.entries(style)) {
-    if (!(FRAME_PROPS as readonly string[]).includes(prop)) extraStyle[prop] = value
+    if ((FRAME_PROPS as readonly string[]).includes(prop)) continue
+    if (prop === 'transform' && rotateMatch) continue
+    extraStyle[prop] = value
   }
   const extraAttrs: Record<string, string> = {}
   for (const attr of Array.from(el.attributes)) {
@@ -114,7 +121,7 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
   const extraClasses = extraClassesOf(el, ['el', 'el-text', 'el-image', 'el-shape'])
 
   if (el.classList.contains('el-text')) {
-    return { type: 'text', id, frame, extraStyle, extraAttrs, extraClasses, html: el.innerHTML.trim() }
+    return { type: 'text', id, frame, rotation, extraStyle, extraAttrs, extraClasses, html: el.innerHTML.trim() }
   }
   if (el.classList.contains('el-image')) {
     const imgs = el.querySelectorAll('img')
@@ -129,6 +136,7 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
       type: 'image',
       id,
       frame,
+      rotation,
       extraStyle,
       extraAttrs,
       extraClasses,
@@ -142,7 +150,7 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
     const hasChildren = el.children.length > 0
     const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
     if (hasChildren || hasText) return opaque()
-    return { type: 'shape', id, frame, extraStyle, extraAttrs, extraClasses, shape: 'rect' }
+    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: 'rect' }
   }
   return opaque()
 }

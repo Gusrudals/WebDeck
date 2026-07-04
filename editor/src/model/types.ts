@@ -8,6 +8,8 @@ export interface Frame {
 interface ElementBase {
   id: string
   frame: Frame
+  /** 회전 각도(도, [0,360)). 0이면 직렬화 시 transform 미출력 */
+  rotation: number
   /** frame(left/top/width/height) 외의 인라인 스타일 — background 등. 왕복 보존 */
   extraStyle: Record<string, string>
   /** class/style/data-shape 외의 속성 — 왕복 보존 */

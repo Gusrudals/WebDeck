@@ -135,3 +135,40 @@ describe('v1.1 슬라이드 속성 (transition·notes)', () => {
     expect(serializeWebdeck(doc)).toContain('data-transition="zoom"')
   })
 })
+
+describe('요소 회전 (v1.1)', () => {
+  const EL = (style: string) => P6_WRAP(`<section class="slide"><div class="el el-text" style="${style}"><p>x</p></div></section>`)
+
+  test('정확한 rotate(n deg) transform은 1급 rotation으로 승격되고 extraStyle에서 제외된다', () => {
+    const doc = parseWebdeck(EL('left:0px; top:0px; width:100px; height:50px; transform:rotate(15deg);'))
+    const el = doc.slides[0]!.elements[0]!
+    expect(el.type).toBe('text')
+    if (el.type !== 'text') return
+    expect(el.rotation).toBe(15)
+    expect(el.extraStyle['transform']).toBeUndefined()
+  })
+
+  test('음수·소수 회전은 [0,360)으로 정규화된다', () => {
+    const doc = parseWebdeck(EL('left:0px; top:0px; width:100px; height:50px; transform: rotate(-15.5deg);'))
+    const el = doc.slides[0]!.elements[0]!
+    if (el.type !== 'text') return
+    expect(el.rotation).toBe(344.5)
+  })
+
+  test('비표준 transform(matrix·다중 함수)은 extraStyle에 원문 보존되고 rotation은 0', () => {
+    const doc = parseWebdeck(EL('left:0px; top:0px; width:100px; height:50px; transform: rotate(10deg) scale(2);'))
+    const el = doc.slides[0]!.elements[0]!
+    if (el.type !== 'text') return
+    expect(el.rotation).toBe(0)
+    expect(el.extraStyle['transform']).toBe('rotate(10deg) scale(2)')
+    expect(checkRoundTrip(doc)).toBeNull()
+  })
+
+  test('회전은 왕복 보존되고 0이면 transform을 출력하지 않는다', () => {
+    const doc = parseWebdeck(EL('left:0px; top:0px; width:100px; height:50px; transform:rotate(30deg);'))
+    expect(checkRoundTrip(doc)).toBeNull()
+    expect(serializeWebdeck(doc)).toContain('transform:rotate(30deg);')
+    const plain = parseWebdeck(EL('left:0px; top:0px; width:100px; height:50px;'))
+    expect(serializeWebdeck(plain)).not.toContain('transform')
+  })
+})

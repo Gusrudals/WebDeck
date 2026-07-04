@@ -70,8 +70,9 @@ function serializeElement(el: SlideElement): string {
 function elementStyle(el: KnownElement): string {
   const { left, top, width, height } = el.frame
   const frame = `left:${left}px; top:${top}px; width:${width}px; height:${height}px;`
+  const rotate = el.rotation !== 0 ? ` transform:rotate(${el.rotation}deg);` : ''
   const extra = serializeInlineStyle(el.extraStyle)
-  return extra ? `${frame} ${extra}` : frame
+  return `${frame}${rotate}${extra ? ` ${extra}` : ''}`
 }
 
 function extraAttrsSuffix(el: KnownElement): string {

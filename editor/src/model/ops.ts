@@ -1,3 +1,4 @@
+import { normalizeAngle } from './rotation.ts'
 import type { DeckDoc, Frame, ImageElement, KnownElement, ShapeElement, Slide, SlideElement, TextElement } from './types.ts'
 import { isKnownElement } from './types.ts'
 
@@ -173,13 +174,22 @@ export function setSlideNotes(doc: DeckDoc, slideId: string, notes: string): Dec
 // ---------- 팩토리 ----------
 
 export function createTextElement(idGen: () => string, frame: Frame, html: string): TextElement {
-  return { type: 'text', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, extraClasses: [], html }
+  return { type: 'text', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], html }
 }
 
 export function createShapeElement(idGen: () => string, frame: Frame, background: string): ShapeElement {
-  return { type: 'shape', id: idGen(), frame: { ...frame }, extraStyle: { background }, extraAttrs: {}, extraClasses: [], shape: 'rect' }
+  return { type: 'shape', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle: { background }, extraAttrs: {}, extraClasses: [], shape: 'rect' }
 }
 
 export function createImageElement(idGen: () => string, frame: Frame, src: string, alt: string): ImageElement {
-  return { type: 'image', id: idGen(), frame: { ...frame }, extraStyle: {}, extraAttrs: {}, extraClasses: [], src, alt, imgStyle: 'width:100%; height:100%;' }
+  return { type: 'image', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], src, alt, imgStyle: 'width:100%; height:100%;' }
+}
+
+export function setElementRotation(doc: DeckDoc, slideId: string, elementId: string, rotation: number): DeckDoc {
+  return mapKnownElement(doc, slideId, elementId, (el) => {
+    // 비표준 transform 잔재를 제거 — 1급 rotation과의 중복 출력 방지
+    const extraStyle = { ...el.extraStyle }
+    delete extraStyle['transform']
+    return { ...el, rotation: normalizeAngle(rotation), extraStyle }
+  })
 }
