@@ -76,6 +76,13 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .start-card span { font-size: 12px; color: #6b7280; }
 .start-open { font: inherit; font-size: 13px; padding: 6px 14px; background: none; border: none; color: var(--wd-primary); cursor: pointer; text-decoration: underline; }
 
+.card-thumb { border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden; background: #fff; position: relative; }
+.card-thumb-error { display: flex; align-items: center; justify-content: center; width: 148px; height: 83px; font-size: 12px; color: #9ca3af; }
+.custom-card { position: relative; padding: 0; border: 1px solid #d1d5db; }
+.custom-card .card-main { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 20px 16px; font: inherit; text-align: left; background: none; border: none; cursor: pointer; }
+.card-delete { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: none; border-radius: 50%; background: #f3f4f6; color: #6b7280; font-size: 14px; line-height: 1; cursor: pointer; }
+.card-delete:hover { background: #fee2e2; color: #b91c1c; }
+
 .color-popover-root { position: relative; display: inline-flex; }
 .color-trigger { display: inline-flex; align-items: center; gap: 5px; }
 .color-chip { width: 14px; height: 14px; border: 1px solid #d1d5db; border-radius: 3px; display: inline-block; }

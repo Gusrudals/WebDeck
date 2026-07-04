@@ -253,3 +253,23 @@ test('dirty 문서에서 열기도 확인을 요구한다', async () => {
   expect(picker).not.toHaveBeenCalled()
   confirmSpy.mockRestore()
 })
+
+test('템플릿으로 등록 → 시작 화면 노출 → 그 템플릿으로 새 문서', async () => {
+  localStorage.clear()
+  const promptSpy = vi.fn(() => '우리 팀 표준')
+  ;(window as unknown as { prompt?: typeof promptSpy }).prompt = promptSpy
+  window.alert = vi.fn()
+  stubFilePicker('base.html', VALID_DOC)
+  const { unmount } = render(<App />)
+  await userEvent.click(screen.getByRole('button', { name: '열기' }))
+  await screen.findAllByText('첫 슬라이드 제목')
+  await userEvent.click(screen.getByRole('button', { name: '템플릿으로 등록' }))
+  expect(promptSpy).toHaveBeenCalled()
+  unmount()
+  // 새로 렌더한 앱의 시작 화면에 커스텀 템플릿이 보이고, 그걸로 시작할 수 있다
+  render(<App />)
+  await userEvent.click(await screen.findByText('우리 팀 표준'))
+  expect(await screen.findByText('제목 없음.html')).toBeTruthy()
+  expect((await screen.findAllByText('첫 슬라이드 제목')).length).toBeGreaterThanOrEqual(1)
+  localStorage.clear()
+})

@@ -2,6 +2,8 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import { CanvasArea } from './canvas/CanvasArea.tsx'
 import { DocumentMode } from './docmode/DocumentMode.tsx'
 import type { DocModeFile } from './docmode/DocumentMode.tsx'
+import { listCustomTemplates, removeCustomTemplate, saveCustomTemplate } from './file/customTemplates.ts'
+import type { CustomTemplate } from './file/customTemplates.ts'
 import { downloadHtml, openHtmlFile, saveAsHtmlFile, saveToHandle } from './file/fileAccess.ts'
 import type { SaveAsResult } from './file/fileAccess.ts'
 import { TEMPLATES } from './file/templates.ts'
@@ -24,6 +26,7 @@ import { useShortcuts } from './hooks/useShortcuts.ts'
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
   const [docFile, setDocFile] = useState<{ seq: number; file: DocModeFile } | null>(null)
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(listCustomTemplates)
   const docSeqRef = useRef(0)
   const idGenRef = useRef(createIdGen('n'))
   useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs, docFile === null)
@@ -43,7 +46,7 @@ export function App() {
 
   function handleStart(key: string) {
     if (!confirmDiscard()) return
-    const template = TEMPLATES.find((t) => t.key === key)
+    const template = TEMPLATES.find((t) => t.key === key) ?? customTemplates.find((t) => t.id === key)
     if (!template) return
     try {
       const doc = normalizeRuntime(parseWebdeck(template.html))
@@ -139,6 +142,57 @@ export function App() {
     dispatch({ type: 'MARK_SAVED', doc })
   }
 
+  function handleRegisterTemplate() {
+    const { doc, fileName } = state
+    if (!doc) return
+    const problem = checkRoundTrip(doc)
+    if (problem) {
+      window.alert(`템플릿 등록 중단: ${problem}`)
+      return
+    }
+    const suggested = (fileName ?? '내 템플릿').replace(/\.html?$/i, '')
+    const name = window.prompt('템플릿 이름', suggested)
+    if (name === null || name.trim() === '') return
+    try {
+      saveCustomTemplate(name.trim(), serializeWebdeck(doc))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : '템플릿을 저장하지 못했습니다')
+      return
+    }
+    setCustomTemplates(listCustomTemplates())
+    window.alert(`템플릿 "${name.trim()}"을(를) 등록했습니다`)
+  }
+
+  async function handleImportTemplate() {
+    let opened
+    try {
+      opened = await openHtmlFile()
+    } catch {
+      window.alert('파일을 여는 중 오류가 발생했습니다')
+      return
+    }
+    if (!opened) return
+    try {
+      parseWebdeck(opened.text)
+    } catch (e) {
+      window.alert(e instanceof WebdeckParseError ? 'WebDeck 문서만 템플릿으로 등록할 수 있습니다' : '문서를 해석할 수 없습니다')
+      return
+    }
+    try {
+      saveCustomTemplate(opened.name.replace(/\.html?$/i, ''), opened.text)
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : '템플릿을 저장하지 못했습니다')
+      return
+    }
+    setCustomTemplates(listCustomTemplates())
+  }
+
+  function handleDeleteTemplate(id: string) {
+    if (!window.confirm('이 템플릿을 삭제할까요?')) return
+    removeCustomTemplate(id)
+    setCustomTemplates(listCustomTemplates())
+  }
+
   if (docFile) {
     return <DocumentMode key={docFile.seq} file={docFile.file} onOpen={handleOpen} />
   }
@@ -151,6 +205,7 @@ export function App() {
         <button type="button" onClick={handleOpen}>열기</button>
         <button type="button" disabled={!state.doc} onClick={handleSave}>저장</button>
         <button type="button" disabled={!state.doc} onClick={handleSaveAs}>다른 이름으로 저장</button>
+        <button type="button" disabled={!state.doc} onClick={handleRegisterTemplate}>템플릿으로 등록</button>
         <button type="button" disabled={!state.history || !canUndo(state.history)} onClick={() => dispatch({ type: 'UNDO' })}>실행 취소</button>
         <button type="button" disabled={!state.history || !canRedo(state.history)} onClick={() => dispatch({ type: 'REDO' })}>다시 실행</button>
         {state.fileName && (
@@ -215,7 +270,13 @@ export function App() {
           dispatch={dispatch}
         />
       ) : (
-        <StartScreen onStart={handleStart} onOpen={handleOpen} />
+        <StartScreen
+          onStart={handleStart}
+          onOpen={handleOpen}
+          customTemplates={customTemplates}
+          onImport={handleImportTemplate}
+          onDeleteTemplate={handleDeleteTemplate}
+        />
       )}
       <PropertiesPanel state={state} dispatch={dispatch} />
     </div>
