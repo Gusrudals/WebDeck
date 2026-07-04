@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { alignFrame, buildSnapTargets, distributeFrames, resizeFrame, snapMove, snapResize } from './geometry.ts'
+import { alignFrame, angleFromCenter, buildSnapTargets, distributeFrames, resizeFrame, snapAngle, snapMove, snapResize } from './geometry.ts'
 
 const F = { left: 100, top: 100, width: 200, height: 100 }
 
@@ -116,6 +116,21 @@ describe('distributeFrames', () => {
       { left: 300, top: 0, width: 100, height: 50 },
     ]
     expect(distributeFrames(frames, 'x')).toEqual(frames)
+  })
+})
+
+describe('회전 기하', () => {
+  test('angleFromCenter — 12시 0°, 3시 90°, 6시 180°, 9시 270°', () => {
+    expect(angleFromCenter(100, 100, 100, 0)).toBe(0)
+    expect(angleFromCenter(100, 100, 200, 100)).toBe(90)
+    expect(angleFromCenter(100, 100, 100, 200)).toBe(180)
+    expect(angleFromCenter(100, 100, 0, 100)).toBe(270)
+  })
+
+  test('snapAngle — 15° 단위 스냅과 360 랩', () => {
+    expect(snapAngle(22)).toBe(15)
+    expect(snapAngle(23)).toBe(30)
+    expect(snapAngle(358)).toBe(0)
   })
 })
 

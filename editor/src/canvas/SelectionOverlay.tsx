@@ -18,6 +18,7 @@ const HANDLE_POS: Record<ResizeHandle, { left: string; top: string }> = {
 export interface ResizeInteraction {
   elementId: string
   onHandlePointerDown: (e: ReactPointerEvent, handle: ResizeHandle) => void
+  onRotatePointerDown: (e: ReactPointerEvent) => void
 }
 
 export function SelectionOverlay({
@@ -38,17 +39,33 @@ export function SelectionOverlay({
         <div
           key={el.id}
           className="selection-box"
-          style={{ left: el.frame.left, top: el.frame.top, width: el.frame.width, height: el.frame.height }}
+          style={{
+            left: el.frame.left,
+            top: el.frame.top,
+            width: el.frame.width,
+            height: el.frame.height,
+            transform: el.rotation !== 0 ? `rotate(${el.rotation}deg)` : undefined,
+          }}
         >
-          {resize?.elementId === el.id &&
-            RESIZE_HANDLES.map((h) => (
+          {resize?.elementId === el.id && (
+            <>
+              {el.rotation === 0 &&
+                RESIZE_HANDLES.map((h) => (
+                  <div
+                    key={h}
+                    className={`handle handle-${h}`}
+                    style={HANDLE_POS[h]}
+                    onPointerDown={(e) => resize.onHandlePointerDown(e, h)}
+                  />
+                ))}
               <div
-                key={h}
-                className={`handle handle-${h}`}
-                style={HANDLE_POS[h]}
-                onPointerDown={(e) => resize.onHandlePointerDown(e, h)}
+                className="handle handle-rotate"
+                role="button"
+                aria-label="회전"
+                onPointerDown={(e) => resize.onRotatePointerDown(e)}
               />
-            ))}
+            </>
+          )}
         </div>
       ))}
       {guides.map((g, i) => (

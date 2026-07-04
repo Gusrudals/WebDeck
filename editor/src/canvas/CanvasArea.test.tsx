@@ -52,6 +52,39 @@ function renderCanvas(selectedIds: string[] = []) {
   return { dispatch, ...utils }
 }
 
+// 단일 도형 요소 문서 픽스처 — 기존 DOC_ONE(문서 파싱→render→요소 선택) 준비 코드 관례를 추출해 재사용
+function parseSingleShapeDoc(extraStyle = ''): DeckDoc {
+  return parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el el-shape" data-shape="rect" style="left:300px; top:300px; width:80px; height:80px;${extraStyle}"></div></section>
+</main></body></html>`)
+}
+
+const DOC_SHAPE_ONLY = parseSingleShapeDoc()
+const DOC_ROTATED = parseSingleShapeDoc(' transform:rotate(30deg);')
+
+// 단일 요소 선택 상태 헬퍼 — 기존 리사이즈 테스트의 준비 코드(문서 파싱→render→요소 선택)를 추출
+function renderCanvasWithSelection() {
+  const dispatch = vi.fn()
+  const elId = DOC_SHAPE_ONLY.slides[0]!.elements[0]!.id
+  const utils = render(
+    <CanvasArea doc={DOC_SHAPE_ONLY} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} />,
+  )
+  return { dispatch, ...utils }
+}
+
+// rotation 30 요소 선택 픽스처
+function renderCanvasWithRotatedSelection() {
+  const dispatch = vi.fn()
+  const elId = DOC_ROTATED.slides[0]!.elements[0]!.id
+  const utils = render(
+    <CanvasArea doc={DOC_ROTATED} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} />,
+  )
+  return { dispatch, ...utils }
+}
+
 test('요소 클릭은 단일 선택을 dispatch한다', () => {
   const { dispatch, getByText } = renderCanvas()
   fireEvent.pointerDown(getByText('제목'), { clientX: 10, clientY: 10 })
@@ -145,7 +178,9 @@ test('다중 선택 드래그는 모두 함께 이동한다 (스냅 없음)', ()
 
 test('단일 선택이면 8개 리사이즈 핸들이 보인다', () => {
   const { container } = renderCanvas([EL_SHAPE])
-  expect(container.querySelectorAll('.handle')).toHaveLength(8)
+  // 회전 핸들(.handle-rotate)도 항상 함께 표시되므로 리사이즈 핸들만 세어본다
+  expect(container.querySelectorAll('.handle:not(.handle-rotate)')).toHaveLength(8)
+  expect(container.querySelector('.handle-rotate')).toBeTruthy()
 })
 
 test('다중 선택이면 핸들이 없다', () => {
@@ -199,6 +234,25 @@ test('리사이즈 스냅 중 가이드 라인이 표시된다', () => {
   fireEvent.pointerMove(window, { clientX: 636, clientY: 340 })
   expect(container.querySelector('.snap-guide-x')).toBeTruthy()
   fireEvent.pointerUp(window)
+})
+
+test('회전 핸들 드래그는 pointerup에 1회 APPLY_DOC으로 회전을 커밋한다', () => {
+  const { dispatch, container } = renderCanvasWithSelection()
+  const handle = container.querySelector('.handle-rotate')!
+  fireEvent.pointerDown(handle, { clientX: 0, clientY: 0 })
+  fireEvent.pointerMove(window, { clientX: 40, clientY: 40 })
+  fireEvent.pointerUp(window)
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const el = (applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!
+  if (el.type === 'opaque') return
+  expect(el.rotation).not.toBe(0)
+})
+
+test('회전된 요소는 리사이즈 핸들이 표시되지 않고 회전 핸들만 남는다', () => {
+  const { container } = renderCanvasWithRotatedSelection()
+  expect(container.querySelector('.handle-rotate')).toBeTruthy()
+  expect(container.querySelector('.handle-se')).toBeNull()
 })
 
 test('이동 중 pointercancel은 커밋 없이 리스너를 해제한다', () => {

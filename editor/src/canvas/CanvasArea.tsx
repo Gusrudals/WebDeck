@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
-import { moveElement, setElementFrame, setTextHtml } from '../model/ops.ts'
+import { moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
 import type { DeckDoc, Frame } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction } from '../state/store.ts'
-import { buildSnapTargets, resizeFrame, snapMove, snapResize } from './geometry.ts'
+import { angleFromCenter, buildSnapTargets, resizeFrame, snapAngle, snapMove, snapResize } from './geometry.ts'
 import type { Guide, ResizeHandle, SnapTargets } from './geometry.ts'
 import { SelectionOverlay } from './SelectionOverlay.tsx'
 import { SlideView } from './SlideView.tsx'
@@ -34,7 +34,15 @@ interface ResizeGesture {
   resized: boolean
 }
 
-type Gesture = MoveGesture | ResizeGesture
+interface RotateGesture {
+  kind: 'rotate'
+  slideId: string
+  id: string
+  rotation: number
+  rotated: boolean
+}
+
+type Gesture = MoveGesture | ResizeGesture | RotateGesture
 
 export interface CanvasAreaProps {
   doc: DeckDoc
@@ -90,6 +98,10 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
       for (const id of gesture.ids) d = moveElement(d, gesture.slideId, id, gesture.dx, gesture.dy)
       return d
     }
+    if (gesture.kind === 'rotate') {
+      if (!gesture.rotated) return doc
+      return setElementRotation(doc, gesture.slideId, gesture.id, gesture.rotation)
+    }
     if (!gesture.resized) return doc
     return setElementFrame(doc, gesture.slideId, gesture.id, gesture.frame)
   }, [doc, gesture])
@@ -102,9 +114,10 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     const startY = e.clientY
     const known = slide.elements.filter(isKnownElement)
     const single = ids.length === 1 ? known.find((el) => el.id === ids[0]) : undefined
-    const targets: SnapTargets | null = single
-      ? buildSnapTargets(doc.slideWidth, doc.slideHeight, known.filter((el) => el.id !== single.id).map((el) => el.frame))
-      : null
+    const targets: SnapTargets | null =
+      single && single.rotation === 0
+        ? buildSnapTargets(doc.slideWidth, doc.slideHeight, known.filter((el) => el.id !== single.id && el.rotation === 0).map((el) => el.frame))
+        : null
     const startFrame: Frame | null = single ? single.frame : null
     const docAtStart = doc
     const g: MoveGesture = { kind: 'move', slideId: slide.id, ids, dx: 0, dy: 0, guides: [], moved: false }
@@ -159,7 +172,7 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     const targets = buildSnapTargets(
       doc.slideWidth,
       doc.slideHeight,
-      known.filter((k) => k.id !== el.id).map((k) => k.frame),
+      known.filter((k) => k.id !== el.id && k.rotation === 0).map((k) => k.frame),
     )
     const docAtStart = doc
     const g: ResizeGesture = { kind: 'resize', slideId: slide.id, id: el.id, frame: orig, guides: [], resized: false }
@@ -183,6 +196,47 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onCancel)
       if (g.resized) dispatch({ type: 'APPLY_DOC', doc: setElementFrame(docAtStart, g.slideId, g.id, g.frame) })
+      setGesture(null)
+    }
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      setGesture(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }
+
+  const beginRotate = (e: ReactPointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const known = slide.elements.filter(isKnownElement)
+    const el = known.find((k) => k.id === selectedIds[0])
+    if (!el) return
+    const stage = (e.currentTarget as HTMLElement).closest('.slide-stage')
+    if (!stage) return
+    const rect = stage.getBoundingClientRect()
+    const cx = el.frame.left + el.frame.width / 2
+    const cy = el.frame.top + el.frame.height / 2
+    const docAtStart = doc
+    const g: RotateGesture = { kind: 'rotate', slideId: slide.id, id: el.id, rotation: el.rotation, rotated: false }
+    const onMove = (ev: PointerEvent) => {
+      const px = (ev.clientX - rect.left) / scaleRef.current
+      const py = (ev.clientY - rect.top) / scaleRef.current
+      const raw = angleFromCenter(cx, cy, px, py)
+      g.rotation = ev.shiftKey ? snapAngle(raw) : Math.round(raw)
+      g.rotated = true
+      setGesture({ ...g })
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      if (g.rotated && g.rotation !== el.rotation) {
+        dispatch({ type: 'APPLY_DOC', doc: setElementRotation(docAtStart, g.slideId, g.id, g.rotation) })
+      }
       setGesture(null)
     }
     const onCancel = () => {
@@ -248,10 +302,10 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
               <SelectionOverlay
                 slide={previewSlide}
                 selectedIds={selectedIds}
-                guides={gesture?.guides ?? []}
+                guides={gesture && gesture.kind !== 'rotate' ? gesture.guides : []}
                 resize={
                   singleSelected && editingTextId !== singleSelected.id
-                    ? { elementId: singleSelected.id, onHandlePointerDown: beginResize }
+                    ? { elementId: singleSelected.id, onHandlePointerDown: beginResize, onRotatePointerDown: beginRotate }
                     : undefined
                 }
               />

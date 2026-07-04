@@ -1,3 +1,4 @@
+import { normalizeAngle } from '../model/rotation.ts'
 import type { Frame } from '../model/types.ts'
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
@@ -30,6 +31,15 @@ export function resizeFrame(orig: Frame, handle: ResizeHandle, dx: number, dy: n
     if (handle.includes('n')) top = bottom - height
   }
   return { left, top, width, height }
+}
+
+/** 중심(cx,cy) 기준 포인터(px,py)의 각도 — 12시 방향 0°, 시계방향 [0,360) */
+export function angleFromCenter(cx: number, cy: number, px: number, py: number): number {
+  return normalizeAngle((Math.atan2(py - cy, px - cx) * 180) / Math.PI + 90)
+}
+
+export function snapAngle(deg: number, step = 15): number {
+  return normalizeAngle(Math.round(deg / step) * step)
 }
 
 export interface SnapTargets {
