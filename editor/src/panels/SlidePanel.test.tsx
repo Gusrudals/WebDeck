@@ -53,14 +53,29 @@ test('썸네일 클릭 시 onSelect가 호출된다', async () => {
   expect(onSelect).toHaveBeenCalledWith(3)
 })
 
-test('추가·복제·삭제 버튼이 핸들러를 호출한다', () => {
-  const { onAdd, onDuplicate, onRemove, getByRole } = renderPanel(DOC)
-  fireEvent.click(getByRole('button', { name: '새 슬라이드' }))
+test('복제·삭제 버튼이 핸들러를 호출한다', () => {
+  const { onDuplicate, onRemove, getByRole } = renderPanel(DOC)
   fireEvent.click(getByRole('button', { name: '슬라이드 복제' }))
   fireEvent.click(getByRole('button', { name: '슬라이드 삭제' }))
-  expect(onAdd).toHaveBeenCalled()
   expect(onDuplicate).toHaveBeenCalled()
   expect(onRemove).toHaveBeenCalled()
+})
+
+test('새 슬라이드 버튼은 레이아웃 팝오버를 열고, 선택 시 키를 전달한다', () => {
+  const onAdd = vi.fn()
+  const { getByRole, queryByRole } = renderPanel(DOC, { onAdd })
+  expect(queryByRole('menu')).toBeNull()
+  fireEvent.click(getByRole('button', { name: '새 슬라이드' }))
+  expect(getByRole('menu')).toBeTruthy()
+  fireEvent.click(getByRole('menuitem', { name: '제목+본문' }))
+  expect(onAdd).toHaveBeenCalledWith('title-body')
+  expect(queryByRole('menu')).toBeNull()
+})
+
+test('레이아웃 팝오버는 빈 장을 포함해 4종을 보여준다', () => {
+  const { getByRole, getAllByRole } = renderPanel(DOC)
+  fireEvent.click(getByRole('button', { name: '새 슬라이드' }))
+  expect(getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['빈 장', '표지', '제목+본문', '2단'])
 })
 
 test('슬라이드가 1장이면 삭제 버튼이 disabled다', () => {

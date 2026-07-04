@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { extractThemeVars } from '../canvas/styleFromModel.ts'
 import { SlideView } from '../canvas/SlideView.tsx'
+import { LAYOUTS } from '../model/layouts.ts'
 import type { DeckDoc } from '../model/types.ts'
 
 const THUMB_WIDTH = 168
@@ -18,7 +19,7 @@ export function SlidePanel({
   doc: DeckDoc
   currentIndex: number
   onSelect: (index: number) => void
-  onAdd: () => void
+  onAdd: (layoutKey: string) => void
   onDuplicate: () => void
   onRemove: () => void
   canRemove: boolean
@@ -27,10 +28,39 @@ export function SlidePanel({
   const themeVars = extractThemeVars(doc.headExtra)
   const scale = THUMB_WIDTH / doc.slideWidth
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [layoutOpen, setLayoutOpen] = useState(false)
+  const layoutRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!layoutOpen) return
+    const onOutside = (e: PointerEvent) => {
+      if (layoutRef.current && !layoutRef.current.contains(e.target as Node)) setLayoutOpen(false)
+    }
+    window.addEventListener('pointerdown', onOutside)
+    return () => window.removeEventListener('pointerdown', onOutside)
+  }, [layoutOpen])
   return (
     <nav aria-label="슬라이드 목록">
       <div className="slide-actions">
-        <button type="button" onClick={onAdd}>새 슬라이드</button>
+        <div className="layout-popover-root" ref={layoutRef}>
+          <button type="button" onClick={() => setLayoutOpen((o) => !o)}>새 슬라이드</button>
+          {layoutOpen && (
+            <div className="layout-popover" role="menu">
+              {LAYOUTS.map((l) => (
+                <button
+                  key={l.key}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setLayoutOpen(false)
+                    onAdd(l.key)
+                  }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button type="button" onClick={onDuplicate}>슬라이드 복제</button>
         <button type="button" disabled={!canRemove} onClick={onRemove}>슬라이드 삭제</button>
       </div>

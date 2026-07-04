@@ -7,6 +7,7 @@ import type { SaveAsResult } from './file/fileAccess.ts'
 import { TEMPLATES } from './file/templates.ts'
 import { createIdGen } from './model/id.ts'
 import { canRedo, canUndo } from './model/history.ts'
+import { LAYOUTS } from './model/layouts.ts'
 import { WebdeckParseError, parseWebdeck } from './model/parse.ts'
 import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts'
 import { checkRoundTrip } from './model/roundtrip.ts'
@@ -178,8 +179,13 @@ export function App() {
             currentIndex={state.currentSlideIndex}
             onSelect={(index) => dispatch({ type: 'SELECT_SLIDE', index })}
             canRemove={state.doc.slides.length > 1}
-            onAdd={() => {
-              dispatch({ type: 'APPLY_DOC', doc: addSlide(state.doc!, idGenRef.current, state.currentSlideIndex + 1) })
+            onAdd={(layoutKey) => {
+              const layout = LAYOUTS.find((l) => l.key === layoutKey)
+              if (!layout) return
+              dispatch({
+                type: 'APPLY_DOC',
+                doc: addSlide(state.doc!, idGenRef.current, state.currentSlideIndex + 1, layout.build(idGenRef.current)),
+              })
               dispatch({ type: 'SELECT_SLIDE', index: state.currentSlideIndex + 1 })
             }}
             onDuplicate={() => {
