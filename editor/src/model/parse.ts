@@ -1,5 +1,6 @@
 import { createIdGen } from './id.ts'
 import { ROTATE_PATTERN, normalizeAngle } from './rotation.ts'
+import { isLinear } from './shapeSvg.ts'
 import { parseInlineStyle } from './style.ts'
 import type { DeckDoc, Frame, Slide, SlideElement } from './types.ts'
 
@@ -11,6 +12,7 @@ export interface ParseOptions {
 
 const FRAME_PROPS = ['left', 'top', 'width', 'height'] as const
 const PX_VALUE = /^-?\d+(\.\d+)?px$/
+const SHAPE_KINDS = ['rect', 'ellipse', 'rounded', 'line', 'arrow'] as const
 
 /** class 속성에서 known 토큰을 제외한 나머지를 원문 순서대로 반환 */
 function extraClassesOf(el: Element, known: string[]): string[] {
@@ -146,11 +148,15 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
     }
   }
   if (el.classList.contains('el-shape')) {
-    if (el.getAttribute('data-shape') !== 'rect') return opaque()
-    const hasChildren = el.children.length > 0
-    const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
-    if (hasChildren || hasText) return opaque()
-    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: 'rect' }
+    const kind = el.getAttribute('data-shape') as (typeof SHAPE_KINDS)[number] | null
+    if (kind === null || !SHAPE_KINDS.includes(kind)) return opaque()
+    if (!isLinear(kind)) {
+      const hasChildren = el.children.length > 0
+      const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
+      if (hasChildren || hasText) return opaque()
+    }
+    // line/arrow는 내부 마크업을 무시한다 — 직렬화가 정준 SVG를 재생성 (스펙 §3)
+    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind }
   }
   return opaque()
 }

@@ -1,5 +1,5 @@
 import { normalizeAngle } from './rotation.ts'
-import type { DeckDoc, Frame, ImageElement, KnownElement, ShapeElement, Slide, SlideElement, TextElement } from './types.ts'
+import type { DeckDoc, Frame, ImageElement, KnownElement, ShapeElement, ShapeKind, Slide, SlideElement, TextElement } from './types.ts'
 import { isKnownElement } from './types.ts'
 
 // ---------- 내부 헬퍼 ----------
@@ -177,8 +177,22 @@ export function createTextElement(idGen: () => string, frame: Frame, html: strin
   return { type: 'text', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], html }
 }
 
+/** 레이아웃·툴바의 rect 도형 경로 — 하위 호환을 위해 유지, createShape('rect', …)에 background만 덮어써 위임 */
 export function createShapeElement(idGen: () => string, frame: Frame, background: string): ShapeElement {
-  return { type: 'shape', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle: { background }, extraAttrs: {}, extraClasses: [], shape: 'rect' }
+  return { ...createShape(idGen, 'rect', frame), frame: { ...frame }, extraStyle: { background } }
+}
+
+/** 도형 삽입 팩토리 — kind별 기본 외형은 인라인 스타일에 내장 (런타임·CSS 무의존, 스펙 §2·§3) */
+export function createShape(idGen: () => string, kind: ShapeKind, frame: Frame): ShapeElement {
+  const extraStyle: Record<string, string> =
+    kind === 'line' || kind === 'arrow'
+      ? { color: '#374151' }
+      : kind === 'ellipse'
+        ? { background: 'var(--wd-accent)', 'border-radius': '50%' }
+        : kind === 'rounded'
+          ? { background: 'var(--wd-accent)', 'border-radius': '24px' }
+          : { background: 'var(--wd-accent)' }
+  return { type: 'shape', id: idGen(), frame, rotation: 0, extraStyle, extraAttrs: {}, extraClasses: [], shape: kind }
 }
 
 export function createImageElement(idGen: () => string, frame: Frame, src: string, alt: string): ImageElement {

@@ -31,9 +31,11 @@ export interface ImageElement extends ElementBase {
   imgStyle: string
 }
 
+export type ShapeKind = 'rect' | 'ellipse' | 'rounded' | 'line' | 'arrow'
+
 export interface ShapeElement extends ElementBase {
   type: 'shape'
-  shape: 'rect'
+  shape: ShapeKind
 }
 
 /** 파서가 이해하지 못하는 슬라이드 자식 — 원문 그대로 보존(왕복 보존 원칙) */
