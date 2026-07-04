@@ -33,7 +33,7 @@ export function readTheme(doc: DeckDoc): Partial<Record<ThemeVarName, string>> |
   const block = doc.headExtra.slice(range.start, range.end)
   const out: Partial<Record<ThemeVarName, string>> = {}
   for (const name of [...THEME_COLOR_VARS, ...THEME_FONT_VARS]) {
-    const m = new RegExp(`${name}\\s*:\\s*([^;]+)`).exec(block)
+    const m = new RegExp(`${name}\\s*:\\s*([^;]*?)(?=\\s*(?:;|$))`).exec(block)
     if (m) out[name] = m[1]!.trim()
   }
   return out
@@ -50,7 +50,7 @@ export function setThemeVars(doc: DeckDoc, patch: Partial<Record<ThemeVarName, s
   let block = doc.headExtra.slice(range.start, range.end)
   for (const [name, value] of Object.entries(patch)) {
     if (value === undefined) continue
-    block = block.replace(new RegExp(`(${name}\\s*:\\s*)[^;]+`), `$1${value}`)
+    block = block.replace(new RegExp(`(${name}\\s*:\\s*)[^;]*?(?=\\s*(?:;|$))`), `$1${value}`)
   }
   const headExtra = doc.headExtra.slice(0, range.start) + block + doc.headExtra.slice(range.end)
   return headExtra === doc.headExtra ? doc : { ...doc, headExtra }

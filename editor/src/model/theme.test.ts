@@ -83,3 +83,28 @@ describe('setThemeVars', () => {
     for (const p of THEME_PRESETS) expect(Object.keys(p.colors)).toHaveLength(4)
   })
 })
+
+describe('세미콜론 없는 마지막 선언 (리뷰 회귀)', () => {
+  const NO_SEMI = `<!DOCTYPE html>
+<html data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title><style>
+  :root {
+    --wd-primary: #1a56db;
+    --wd-muted: #6b7280
+  }
+</style></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"></section>
+</main></body></html>`
+
+  test('읽기: 후행 공백 없이 값만 반환한다', () => {
+    expect(readTheme(parseWebdeck(NO_SEMI))!['--wd-muted']).toBe('#6b7280')
+  })
+
+  test('교체: 값 문자만 바뀌고 후행 개행·공백이 보존된다', () => {
+    const d = parseWebdeck(NO_SEMI)
+    const out = setThemeVars(d, { '--wd-muted': '#000000' })
+    expect(out.headExtra).toBe(d.headExtra.replace('#6b7280', '#000000'))
+    expect(readTheme(out)!['--wd-muted']).toBe('#000000')
+  })
+})

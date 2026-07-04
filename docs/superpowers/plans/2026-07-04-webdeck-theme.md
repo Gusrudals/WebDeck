@@ -202,7 +202,8 @@ export function setThemeVars(doc: DeckDoc, patch: Partial<Record<ThemeVarName, s
 - [ ] **Step 4: 통과 확인**
 
 Run: `cd editor && npx vitest run src/model/theme.test.ts && npm run typecheck`
-Expected: PASS (9 tests), 타입 오류 없음
+Expected: PASS (8 tests — 회귀 2개 추가 후 10), 타입 오류 없음
+> 리뷰 수정: 값 매칭 정규식을 비탐욕+경계 룩어헤드로 교체 (세미콜론 없는 마지막 선언의 후행 공백 삼킴 방지)
 
 - [ ] **Step 5: 커밋**
 
