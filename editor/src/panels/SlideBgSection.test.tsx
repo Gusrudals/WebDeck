@@ -78,6 +78,21 @@ test('이미지: 파일 선택 → data URI로 1회 커밋', async () => {
   expect(appliedBg(dispatch)).toBe('url(data:image/png;base64,AAAA) center / cover no-repeat')
 })
 
+test('그라데이션에서 단색 흰색으로 전환할 수 있다 (최종 리뷰 회귀)', () => {
+  const { dispatch, getByLabelText } = setup(' data-bg="linear-gradient(180deg, #111111, #222222)"')
+  fireEvent.change(getByLabelText('배경 유형'), { target: { value: 'solid' } })
+  const input = getByLabelText('배경색')
+  // 단색 전환 직후 표시값은 흰색 폴백(solidValue)과 우연히 같아, 흰색으로 단일 change를 쏘면
+  // jsdom의 값 트래커가 "값 변화 없음"으로 보고 React onChange 자체가 발화하지 않는다(React/jsdom 공통 동작).
+  // 실사용에서는 사용자가 피커를 열어 다른 색을 거쳤다가 다시 흰색을 고르는 경로로 동일 현상이 재현되므로
+  // 중간에 다른 색을 한 번 거쳐 실제 값 변화를 발생시킨 뒤 흰색으로 되돌린다 — 회귀 대상인 가드
+  // `bgDraft !== solidValue`는 이 경로에서 bgDraft가 solidValue와 같아지는 순간 커밋을 막았었다.
+  fireEvent.change(input, { target: { value: '#123456' } })
+  fireEvent.change(input, { target: { value: '#ffffff' } })
+  fireEvent.blur(input)
+  expect(appliedBg(dispatch)).toBe('#ffffff')
+})
+
 test('이미지가 아닌 파일은 무시하고 알림한다', async () => {
   const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
   const readFile = vi.fn()

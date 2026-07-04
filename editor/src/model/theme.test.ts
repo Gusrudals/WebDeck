@@ -108,3 +108,30 @@ describe('세미콜론 없는 마지막 선언 (리뷰 회귀)', () => {
     expect(readTheme(out)!['--wd-muted']).toBe('#000000')
   })
 })
+
+describe('CSS 주석 마스킹 (최종 리뷰 회귀)', () => {
+  test('주석 안의 :root 텍스트를 블록으로 오인하지 않는다', () => {
+    const html = DOC_HTML.replace('/* 상단 주석 유지 확인용 */', '/* usage: :root { --wd-primary: red } to override */')
+    const d = parseWebdeck(html)
+    expect(readTheme(d)!['--wd-primary']).toBe('#1a56db')
+    const out = setThemeVars(d, { '--wd-primary': '#9f1239' })
+    expect(out.headExtra).toContain('/* usage: :root { --wd-primary: red } to override */')
+    expect(out.headExtra).toBe(d.headExtra.replace('--wd-primary: #1a56db', '--wd-primary: #9f1239'))
+  })
+
+  test('블록 안 주석의 중괄호로 블록이 조기 절단되지 않는다', () => {
+    const html = DOC_HTML.replace('--wd-primary: #1a56db;', '/* } 절단 유도 */ --wd-primary: #1a56db;')
+    const d = parseWebdeck(html)
+    expect(readTheme(d)!['--wd-muted']).toBe('#6b7280')
+    const out = setThemeVars(d, { '--wd-muted': '#000000' })
+    expect(out.headExtra).toBe(d.headExtra.replace('#6b7280', '#000000'))
+  })
+
+  test('값 뒤 주석은 값 교체 시 보존된다', () => {
+    const html = DOC_HTML.replace('--wd-primary: #1a56db;', '--wd-primary: #1a56db /* brand */;')
+    const d = parseWebdeck(html)
+    expect(readTheme(d)!['--wd-primary']).toBe('#1a56db')
+    const out = setThemeVars(d, { '--wd-primary': '#047857' })
+    expect(out.headExtra).toContain('#047857 /* brand */;')
+  })
+})

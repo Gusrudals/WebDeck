@@ -48,3 +48,13 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - v1 런타임 시그니처 휴리스틱(dataset.slideWidth+beforeprint)이 우연히 일치하는 커스텀 스크립트를 무경고 교체할 수 있음 — `<script src>` 제외·`.deck` 참조 동시 요구 등으로 조이기 검토
 - 구 런타임이 비스크립트 요소 안에 중첩된 문서는 bodyExtra로 보존되고 새 런타임이 추가돼 이중 실행 가능 (실문서 확률 희박)
 - `data-notes=""` 명시 빈 속성은 저장 시 탈락 (모델 동등, 바이트 차이만 — 기록)
+
+## Plan 7 이월 (최종 리뷰에서 백로그 판정)
+
+- 다크모드용 두 번째 `:root` 블록(@media 안) 문서: 테마 수술은 본 블록, 캔버스 표시는 extractThemeVars(마지막 선언 승) — 편집이 무반응으로 보일 수 있음. "@media 밖 첫 :root" 인식 + extractThemeVars 정합 필요
+- 커스텀 템플릿 XSS: `<img onerror>` 류 인라인 핸들러가 텍스트 요소 html로 보존→dangerouslySetInnerHTML 렌더로 실행 가능. 가져온 템플릿은 시작 화면 썸네일에서 앱 기동마다 자동 렌더+localStorage 영속으로 기존 '문서 열기' 노출보다 격상 — 렌더 전 on* 속성/javascript: 제거 새니타이저 검토 (사내망 배포 Plan 10의 XSS 재평가와 병합)
+- bg image 판별이 접두사(url(data:image/) 기준이라 비규약 변형(top left / contain 등)도 image로 분류 — 원문 보존이라 손상은 없음, 편집 시 규약형으로 대체됨
+- ai-guide.md에 data-bg 확장 값(그라데이션·이미지 규약) 미문서화 — 규약 형태로 생성해야 에디터에서 편집 가능하므로 문서화 가치 있음
+- App.test의 window.prompt/alert 전역 할당 미복원 (현재 파일별 격리로 무해 — afterEach 복원 위생)
+- 템플릿 등록 실패 분기(checkRoundTrip 실패·quota) 자동 테스트 공백
+- layouts.ts 주석 "ai-guide의 검증된 레시피" — 표지는 하단 밴드 없는 변형이므로 "기반" 정도로 문구 완화

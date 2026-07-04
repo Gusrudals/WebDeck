@@ -65,6 +65,16 @@ test('테마 변수가 없는 문서는 안내만 보여준다', () => {
   expect(queryByLabelText('제목 폰트')).toBeNull()
 })
 
+test(':root는 있지만 테마 변수가 없으면 안내만 보여준다 (최종 리뷰 회귀)', () => {
+  const empty = parseWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title><style>:root { --other: 1; }</style></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"></section></main></body></html>`)
+  const { getByText, queryByRole } = setup(empty)
+  expect(getByText('이 문서에는 테마 변수가 없습니다')).toBeTruthy()
+  expect(queryByRole('button', { name: /파랑 기본/ })).toBeNull()
+})
+
 test('hex가 아닌 색 값은 사용자 지정 표시로 보존된다', () => {
   const weird = parseWebdeck(`<!DOCTYPE html>
 <html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title><style>:root { --wd-primary: rgb(20, 20, 20); }</style></head>

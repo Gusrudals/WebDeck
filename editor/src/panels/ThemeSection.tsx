@@ -22,7 +22,7 @@ const FONT_ROWS: [ThemeVarName, string][] = [
 
 export function ThemeSection({ doc, dispatch }: { doc: DeckDoc; dispatch: Dispatch<EditorAction> }) {
   const theme = readTheme(doc)
-  if (!theme) {
+  if (!theme || Object.keys(theme).length === 0) {
     return (
       <section className="theme-section">
         <h2>문서 테마</h2>

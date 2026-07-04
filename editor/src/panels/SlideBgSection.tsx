@@ -81,7 +81,7 @@ export function SlideBgSection({
             value={bgDraft ?? solidValue}
             onChange={(e) => setBgDraft(e.target.value)}
             onBlur={() => {
-              if (bgDraft !== null && bgDraft !== solidValue) commit(bgDraft)
+              if (bgDraft !== null) commit(bgDraft)
               setBgDraft(null)
             }}
           />
