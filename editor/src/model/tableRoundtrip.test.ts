@@ -63,4 +63,11 @@ describe('el-table 왕복', () => {
     const doc = parseWebdeck(WRAP('<table><tbody><tr><td>x</td></tr></tbody></table>'))
     expect(doc.slides[0]!.elements[0]!.type).toBe('opaque')
   })
+
+  test('table 옆에 비공백 텍스트가 있으면 opaque 보존 (조용한 유실 방지 — 리뷰 회귀)', () => {
+    const doc = parseWebdeck(TABLE('<tbody><tr><td>a</td></tr></tbody>').replace('<table>', 'stray text<table>'))
+    expect(doc.slides[0]!.elements[0]!.type).toBe('opaque')
+    expect(serializeWebdeck(doc)).toContain('stray text')
+    expect(checkRoundTrip(doc)).toBeNull()
+  })
 })

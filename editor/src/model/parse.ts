@@ -125,7 +125,8 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
 
   if (el.classList.contains('el-table')) {
     const tables = Array.from(el.children).filter((c) => c.tagName === 'TABLE')
-    if (tables.length !== 1 || el.children.length !== 1) return opaque()
+    const hasStrayText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
+    if (tables.length !== 1 || el.children.length !== 1 || hasStrayText) return opaque()
     const parsed = parseTableMarkup(tables[0]!)
     if (!parsed) return opaque()
     return { type: 'table', id, frame, rotation, extraStyle, extraAttrs, extraClasses, colWidths: parsed.colWidths, rows: parsed.rows }
