@@ -52,10 +52,32 @@ function parseCell(el: Element): TableCell | null {
   return { html: el.innerHTML.trim(), colspan, rowspan, header: tag === 'th', bg, align, extraStyle, extraAttrs }
 }
 
+/** table 직속 자식을 순회해 tr을 수집한다 — 미지원 자식이 있으면 null */
+function collectRows(tableEl: Element): Element[] | null {
+  const trs: Element[] = []
+  for (const child of Array.from(tableEl.children)) {
+    const tag = child.tagName.toLowerCase()
+    if (tag === 'colgroup') continue
+    if (tag === 'tr') {
+      trs.push(child)
+      continue
+    }
+    if (tag === 'thead' || tag === 'tbody') {
+      for (const inner of Array.from(child.children)) {
+        if (inner.tagName.toLowerCase() !== 'tr') return null
+        trs.push(inner)
+      }
+      continue
+    }
+    return null // caption·tfoot 등 미지원 자식 — 정형 아님
+  }
+  return trs
+}
+
 /** table 요소에서 모델을 추출한다 — 정형이 아니면 null (스펙 §2.3) */
 export function parseTableMarkup(tableEl: Element): { colWidths: number[]; rows: TableCell[][] } | null {
-  const trs = Array.from(tableEl.querySelectorAll(':scope > tr, :scope > thead > tr, :scope > tbody > tr'))
-  if (trs.length === 0) return null
+  const trs = collectRows(tableEl)
+  if (!trs || trs.length === 0) return null
   const rows: TableCell[][] = []
   for (const tr of trs) {
     const cells: TableCell[] = []

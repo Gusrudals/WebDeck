@@ -57,6 +57,13 @@ describe('parseTableMarkup', () => {
   test('스팬 0·음수는 null', () => {
     expect(parseTableMarkup(tableEl('<tbody><tr><td colspan="0">a</td></tr></tbody>'))).toBeNull()
   })
+
+  test('caption·tfoot 등 미지원 자식이 있으면 null (조용한 소실 방지 — 리뷰 회귀)', () => {
+    // caption이 table 직속 자식으로 있는 경우
+    expect(parseTableMarkup(tableEl('<caption>제목</caption><tbody><tr><td>a</td></tr></tbody>'))).toBeNull()
+    // tfoot이 table 직속 자식으로 있는 경우
+    expect(parseTableMarkup(tableEl('<tbody><tr><td>a</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot>'))).toBeNull()
+  })
 })
 
 describe('serializeTableInner', () => {
