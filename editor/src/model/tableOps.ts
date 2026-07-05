@@ -43,12 +43,13 @@ export function buildGrid(el: TableElement): ({ r: number; c: number } | null)[]
 }
 
 export function normalizeWidths(widths: number[]): number[] {
-  const sum = widths.reduce((a, b) => a + b, 0)
-  if (sum <= 0) return widths.map(() => Math.round(10000 / widths.length) / 100)
-  return widths.map((w) => Math.round((w / sum) * 10000) / 100)
+  const clamped = widths.map((w) => Math.max(0, w))
+  const sum = clamped.reduce((a, b) => a + b, 0)
+  if (sum <= 0) return clamped.map(() => Math.round(10000 / widths.length) / 100)
+  return clamped.map((w) => Math.round((w / sum) * 10000) / 100)
 }
 
-function mapTable(doc: DeckDoc, slideId: string, elementId: string, fn: (el: TableElement) => TableElement): DeckDoc {
+export function mapTable(doc: DeckDoc, slideId: string, elementId: string, fn: (el: TableElement) => TableElement): DeckDoc {
   return mapKnownElement(doc, slideId, elementId, (el) => (el.type === 'table' ? fn(el) : el))
 }
 

@@ -76,4 +76,11 @@ describe('setCellHtml·normalizeWidths', () => {
     expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 1)
     expect(w[0]).toBeCloseTo(33.33, 1)
   })
+
+  test('normalizeWidths — 개별 음수는 0으로 클램프 후 정규화 (리뷰 회귀)', () => {
+    const w = normalizeWidths([-10, 20, 30])
+    expect(w.every((x) => x >= 0)).toBe(true)
+    expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 1)
+    expect(w[0]).toBe(0)
+  })
 })
