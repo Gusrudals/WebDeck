@@ -104,3 +104,107 @@ export function rebuildRows(rowCount: number, anchors: { cell: TableCell; r: num
   for (const a of [...anchors].sort((x, y) => x.r - y.r || x.c - y.c)) rows[a.r]!.push(a.cell)
   return rows
 }
+
+/**
+ * no-op 단축 경로 전용: mapTable(→mapKnownElement→mapSlide) 호출 전에 현재 표를 들여다본다.
+ * mapSlide는 slides/elements 배열을 항상 `.slice()`로 새로 만들어 반환하므로, fn이 el을 그대로
+ * 반환해도(참조 동일) 최종 DeckDoc은 원본과 다른 객체가 된다 — "마지막 행/열 삭제는 같은 doc"
+ * 계약을 지키려면 mapTable에 들어가기 전에 걸러 doc 자체를 그대로 돌려줘야 한다.
+ * 슬라이드/요소를 못 찾거나 표가 아니면 null — 그 경우의 에러 처리는 mapTable에 위임한다.
+ */
+function peekTable(doc: DeckDoc, slideId: string, elementId: string): TableElement | null {
+  const slide = doc.slides.find((s) => s.id === slideId)
+  const el = slide?.elements.find((e) => e.id === elementId)
+  return el && el.type === 'table' ? el : null
+}
+
+export function insertRow(doc: DeckDoc, slideId: string, elementId: string, index: number): DeckDoc {
+  return mapTable(doc, slideId, elementId, (el) => {
+    const cols = el.colWidths.length
+    const anchors = flattenAnchors(el).map((a) => {
+      // 삽입선(index-1행과 index행 사이)을 가로지르는 스팬은 확장
+      if (a.r < index && a.r + a.cell.rowspan > index) {
+        return { ...a, cell: { ...a.cell, rowspan: a.cell.rowspan + 1 } }
+      }
+      return a.r >= index ? { ...a, r: a.r + 1 } : a
+    })
+    // 새 행: 확장된 스팬이 덮지 않는 열에만 빈 셀
+    const covered = new Set<number>()
+    for (const a of anchors) {
+      if (a.r < index && a.r + a.cell.rowspan > index) {
+        for (let cc = a.c; cc < a.c + a.cell.colspan; cc++) covered.add(cc)
+      }
+    }
+    for (let c = 0; c < cols; c++) {
+      if (!covered.has(c)) anchors.push({ cell: newCell(), r: index, c })
+    }
+    return { ...el, rows: rebuildRows(el.rows.length + 1, anchors) }
+  })
+}
+
+export function removeRow(doc: DeckDoc, slideId: string, elementId: string, index: number): DeckDoc {
+  // 마지막 남은 행은 삭제 불가 — mapTable 진입 전에 걸러 doc을 그대로 반환(참조 동일성 보장)
+  const current = peekTable(doc, slideId, elementId)
+  if (current && current.rows.length <= 1) return doc
+  return mapTable(doc, slideId, elementId, (el) => {
+    const anchors: { cell: TableCell; r: number; c: number }[] = []
+    for (const a of flattenAnchors(el)) {
+      if (a.r === index) {
+        // 앵커가 삭제선에 있음 — 스팬>1이면 다음 행으로 이전(내용 유지)
+        if (a.cell.rowspan > 1) anchors.push({ cell: { ...a.cell, rowspan: a.cell.rowspan - 1 }, r: index, c: a.c })
+        continue
+      }
+      if (a.r < index && a.r + a.cell.rowspan > index) {
+        anchors.push({ ...a, cell: { ...a.cell, rowspan: a.cell.rowspan - 1 } })
+        continue
+      }
+      anchors.push(a.r > index ? { ...a, r: a.r - 1 } : a)
+    }
+    return { ...el, rows: rebuildRows(el.rows.length - 1, anchors) }
+  })
+}
+
+export function insertCol(doc: DeckDoc, slideId: string, elementId: string, index: number): DeckDoc {
+  return mapTable(doc, slideId, elementId, (el) => {
+    const anchors = flattenAnchors(el).map((a) => {
+      if (a.c < index && a.c + a.cell.colspan > index) {
+        return { ...a, cell: { ...a.cell, colspan: a.cell.colspan + 1 } }
+      }
+      return a.c >= index ? { ...a, c: a.c + 1 } : a
+    })
+    const covered = new Set<number>()
+    for (const a of anchors) {
+      if (a.c < index && a.c + a.cell.colspan > index) {
+        for (let rr = a.r; rr < a.r + a.cell.rowspan; rr++) covered.add(rr)
+      }
+    }
+    for (let r = 0; r < el.rows.length; r++) {
+      if (!covered.has(r)) anchors.push({ cell: newCell(), r, c: index })
+    }
+    const widths = [...el.colWidths]
+    widths.splice(index, 0, 100 / (el.colWidths.length + 1))
+    return { ...el, colWidths: normalizeWidths(widths), rows: rebuildRows(el.rows.length, anchors) }
+  })
+}
+
+export function removeCol(doc: DeckDoc, slideId: string, elementId: string, index: number): DeckDoc {
+  // 마지막 남은 열은 삭제 불가 — mapTable 진입 전에 걸러 doc을 그대로 반환(참조 동일성 보장)
+  const current = peekTable(doc, slideId, elementId)
+  if (current && current.colWidths.length <= 1) return doc
+  return mapTable(doc, slideId, elementId, (el) => {
+    const anchors: { cell: TableCell; r: number; c: number }[] = []
+    for (const a of flattenAnchors(el)) {
+      if (a.c === index) {
+        if (a.cell.colspan > 1) anchors.push({ cell: { ...a.cell, colspan: a.cell.colspan - 1 }, r: a.r, c: index })
+        continue
+      }
+      if (a.c < index && a.c + a.cell.colspan > index) {
+        anchors.push({ ...a, cell: { ...a.cell, colspan: a.cell.colspan - 1 } })
+        continue
+      }
+      anchors.push(a.c > index ? { ...a, c: a.c - 1 } : a)
+    }
+    const widths = el.colWidths.filter((_, i) => i !== index)
+    return { ...el, colWidths: normalizeWidths(widths), rows: rebuildRows(el.rows.length, anchors) }
+  })
+}
