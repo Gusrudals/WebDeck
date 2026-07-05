@@ -38,6 +38,30 @@ export interface ShapeElement extends ElementBase {
   shape: ShapeKind
 }
 
+export type CellAlign = 'left' | 'center' | 'right'
+
+export interface TableCell {
+  /** 셀 내부 HTML — el-text와 같은 계약(인라인 서식 보존, trim) */
+  html: string
+  colspan: number
+  rowspan: number
+  /** th 여부 */
+  header: boolean
+  /** 1급 셀 서식 — background/text-align. 그 외 스타일은 extraStyle 보존 */
+  bg: string | null
+  align: CellAlign | null
+  extraStyle: Record<string, string>
+  extraAttrs: Record<string, string>
+}
+
+export interface TableElement extends ElementBase {
+  type: 'table'
+  /** 열 너비 % — 길이 = 그리드 열 수 */
+  colWidths: number[]
+  /** 앵커 셀만 (HTML 마크업과 1:1). 스팬으로 덮인 행은 빈 배열 허용 */
+  rows: TableCell[][]
+}
+
 /** 파서가 이해하지 못하는 슬라이드 자식 — 원문 그대로 보존(왕복 보존 원칙) */
 export interface OpaqueElement {
   type: 'opaque'
@@ -45,8 +69,8 @@ export interface OpaqueElement {
   html: string
 }
 
-export type SlideElement = TextElement | ImageElement | ShapeElement | OpaqueElement
-export type KnownElement = TextElement | ImageElement | ShapeElement
+export type SlideElement = TextElement | ImageElement | ShapeElement | TableElement | OpaqueElement
+export type KnownElement = TextElement | ImageElement | ShapeElement | TableElement
 
 export interface Slide {
   id: string
