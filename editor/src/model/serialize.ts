@@ -1,5 +1,6 @@
 import { isLinear, shapeInnerHtml } from './shapeSvg.ts'
 import { serializeInlineStyle } from './style.ts'
+import { serializeTableInner } from './tableMarkup.ts'
 import type { DeckDoc, KnownElement, Slide, SlideElement } from './types.ts'
 
 export function serializeWebdeck(doc: DeckDoc): string {
@@ -48,7 +49,7 @@ function serializeSlide(slide: Slide): string {
 }
 
 function elementClass(el: KnownElement): string {
-  const base = { text: 'el el-text', image: 'el el-image', shape: 'el el-shape' }[el.type]
+  const base = { text: 'el el-text', image: 'el el-image', shape: 'el el-shape', table: 'el el-table' }[el.type]
   return [base, ...el.extraClasses].join(' ')
 }
 
@@ -67,6 +68,8 @@ function serializeElement(el: SlideElement): string {
       const inner = isLinear(el.shape) ? shapeInnerHtml(el.shape as 'line' | 'arrow', el.id) : ''
       return `<div class="${escapeAttr(elementClass(el))}" data-shape="${el.shape}" style="${escapeAttr(style)}"${attrs}>${inner}</div>`
     }
+    case 'table':
+      return `<div class="${escapeAttr(elementClass(el))}" style="${escapeAttr(style)}"${attrs}><table style="border-collapse:collapse; width:100%;">${serializeTableInner(el.colWidths, el.rows)}</table></div>`
   }
 }
 

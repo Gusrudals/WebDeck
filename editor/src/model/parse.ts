@@ -2,6 +2,7 @@ import { createIdGen } from './id.ts'
 import { ROTATE_PATTERN, normalizeAngle } from './rotation.ts'
 import { isLinear } from './shapeSvg.ts'
 import { parseInlineStyle } from './style.ts'
+import { parseTableMarkup } from './tableMarkup.ts'
 import type { DeckDoc, Frame, Slide, SlideElement } from './types.ts'
 
 export class WebdeckParseError extends Error {}
@@ -120,8 +121,15 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
     if (attr.name === 'class' || attr.name === 'style' || attr.name === 'data-shape') continue
     extraAttrs[attr.name] = attr.value
   }
-  const extraClasses = extraClassesOf(el, ['el', 'el-text', 'el-image', 'el-shape'])
+  const extraClasses = extraClassesOf(el, ['el', 'el-text', 'el-image', 'el-shape', 'el-table'])
 
+  if (el.classList.contains('el-table')) {
+    const tables = Array.from(el.children).filter((c) => c.tagName === 'TABLE')
+    if (tables.length !== 1 || el.children.length !== 1) return opaque()
+    const parsed = parseTableMarkup(tables[0]!)
+    if (!parsed) return opaque()
+    return { type: 'table', id, frame, rotation, extraStyle, extraAttrs, extraClasses, colWidths: parsed.colWidths, rows: parsed.rows }
+  }
   if (el.classList.contains('el-text')) {
     return { type: 'text', id, frame, rotation, extraStyle, extraAttrs, extraClasses, html: el.innerHTML.trim() }
   }
