@@ -21,7 +21,7 @@ test('line/arrow 도형은 정준 SVG를 렌더한다', () => {
   const el = createShape(createIdGen('s'), 'arrow', { left: 0, top: 0, width: 320, height: 8 })
   const { container } = render(<ElementView element={el} />)
   expect(container.querySelector('svg line')).toBeTruthy()
-  expect(container.querySelector('marker#wd-arrow-head')).toBeTruthy()
+  expect(container.querySelector(`marker#wd-arrow-head-${el.id}`)).toBeTruthy()
 })
 
 test('rect 도형은 자식 없이 렌더된다 (회귀)', () => {

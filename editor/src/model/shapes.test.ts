@@ -4,7 +4,7 @@ import { addElement, createShape } from './ops.ts'
 import { parseWebdeck } from './parse.ts'
 import { checkRoundTrip } from './roundtrip.ts'
 import { serializeWebdeck } from './serialize.ts'
-import { SHAPE_INNER_HTML, isLinear } from './shapeSvg.ts'
+import { isLinear, shapeInnerHtml } from './shapeSvg.ts'
 
 const WRAP = (inner: string) => `<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
@@ -47,7 +47,7 @@ describe('line·arrow 정준 SVG', () => {
     if (el.type !== 'shape') return
     expect(el.shape).toBe('arrow')
     const html = serializeWebdeck(doc)
-    expect(html).toContain(SHAPE_INNER_HTML.arrow)
+    expect(html).toContain(shapeInnerHtml('arrow', el.id))
     expect(html).not.toContain('쓰레기')
   })
 
@@ -56,20 +56,34 @@ describe('line·arrow 정준 SVG', () => {
     const once = serializeWebdeck(doc)
     const twice = serializeWebdeck(parseWebdeck(once))
     expect(twice).toBe(once)
-    expect(once).toContain(SHAPE_INNER_HTML.line)
+    expect(once).toContain(shapeInnerHtml('line', '무관'))
   })
 
   test('정준 SVG 규약: 퍼센트 좌표·currentColor·stroke-width 2·화살표 marker', () => {
-    expect(SHAPE_INNER_HTML.line).toContain('y1="50%"')
-    expect(SHAPE_INNER_HTML.line).toContain('x2="100%"')
-    expect(SHAPE_INNER_HTML.line).toContain('stroke="currentColor"')
-    expect(SHAPE_INNER_HTML.line).toContain('stroke-width="2"')
-    expect(SHAPE_INNER_HTML.line).not.toContain('viewBox')
-    expect(SHAPE_INNER_HTML.arrow).toContain('wd-arrow-head')
-    expect(SHAPE_INNER_HTML.arrow).toContain('markerUnits="userSpaceOnUse"')
+    const lineHtml = shapeInnerHtml('line', '무관')
+    expect(lineHtml).toContain('y1="50%"')
+    expect(lineHtml).toContain('x2="100%"')
+    expect(lineHtml).toContain('stroke="currentColor"')
+    expect(lineHtml).toContain('stroke-width="2"')
+    expect(lineHtml).not.toContain('viewBox')
+    const arrowHtml = shapeInnerHtml('arrow', 'abc123')
+    expect(arrowHtml).toContain('wd-arrow-head-abc123')
+    expect(arrowHtml).toContain('markerUnits="userSpaceOnUse"')
     expect(isLinear('line')).toBe(true)
     expect(isLinear('arrow')).toBe(true)
     expect(isLinear('rect')).toBe(false)
+  })
+
+  test('화살표 여러 개는 각자 유일한 marker id를 갖는다 (머리 색 격리)', () => {
+    const doc = parseWebdeck(WRAP(
+      '<div class="el el-shape" data-shape="arrow" style="left:0px; top:10px; width:200px; height:8px; color:#dc2626;"></div>'
+      + '<div class="el el-shape" data-shape="arrow" style="left:0px; top:40px; width:200px; height:8px; color:#1a56db;"></div>'
+    ))
+    const html = serializeWebdeck(doc)
+    const ids = [...html.matchAll(/id="(wd-arrow-head-[^"]+)"/g)].map((m) => m[1])
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+    for (const id of ids) expect(html).toContain(`url(#${id})`)
   })
 })
 

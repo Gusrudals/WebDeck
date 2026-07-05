@@ -1,4 +1,4 @@
-import { SHAPE_INNER_HTML, isLinear } from './shapeSvg.ts'
+import { isLinear, shapeInnerHtml } from './shapeSvg.ts'
 import { serializeInlineStyle } from './style.ts'
 import type { DeckDoc, KnownElement, Slide, SlideElement } from './types.ts'
 
@@ -64,7 +64,7 @@ function serializeElement(el: SlideElement): string {
       return `<div class="${escapeAttr(elementClass(el))}" style="${escapeAttr(style)}"${attrs}><img src="${escapeAttr(el.src)}" alt="${escapeAttr(el.alt)}"${imgStyle}></div>`
     }
     case 'shape': {
-      const inner = isLinear(el.shape) ? SHAPE_INNER_HTML[el.shape as 'line' | 'arrow'] : ''
+      const inner = isLinear(el.shape) ? shapeInnerHtml(el.shape as 'line' | 'arrow', el.id) : ''
       return `<div class="${escapeAttr(elementClass(el))}" data-shape="${el.shape}" style="${escapeAttr(style)}"${attrs}>${inner}</div>`
     }
   }

@@ -35,7 +35,7 @@
   - viewBox 없이 `width="100%" height="100%"` + **퍼센트 좌표**(`<line x1="0" y1="50%" x2="100%" y2="50%">`) — viewBox 왜곡이 원천적으로 없어 `preserveAspectRatio`/`vector-effect` 불필요 *(2026-07-04 플랜 작성 중 정정: 초안의 preserveAspectRatio="none"+polygon 방식은 얇은 프레임에서 화살표 머리가 심하게 왜곡됨)*
   - `stroke="currentColor"` — 선 색은 요소 extraStyle의 `color`로 제어. 삽입 기본 `color: #374151`
   - 굵기 고정 `stroke-width="2"` (조절 UI는 후속)
-  - 화살표 머리는 `marker-end` + `markerUnits="userSpaceOnUse"`(고정 픽셀 크기 — 상자 비율 무관 무왜곡). marker id는 상수 `wd-arrow-head` — 문서 내 중복 id가 생겨도 **모든 정의가 동일 내용**이라 렌더 무해(첫 정의 참조). SVG에 `overflow: visible`로 머리 잘림 방지
+  - 화살표 머리는 `marker-end` + `markerUnits="userSpaceOnUse"`(고정 픽셀 크기 — 상자 비율 무관 무왜곡). marker id는 **요소별 유일**(`wd-arrow-head-<요소id>`) — *(2026-07-05 최종 리뷰 정정: 상수 id는 url(#id)가 문서 전역 첫 정의로 해석되고 marker 안 currentColor가 정의 위치의 color를 따르므로, 색이 다른 화살표들의 머리가 첫 화살표 색으로 고정되는 실결함이 실브라우저에서 확인됨)*. 파서의 id 발급이 문서 순서대로 결정적이라 왕복 정준성은 유지된다. SVG에 `overflow: visible`로 머리 잘림 방지
 - **직렬화는 모델에서 SVG를 항상 재생성**(정준형 — 2회 직렬화 동일), **파서는 line/arrow의 내부 마크업을 무시**(자식이 있어도 opaque로 강등하지 않음) — 내부 드리프트 원천 차단. 왕복 계약: line/arrow의 내부는 "정준형으로 정규화됨"을 스펙에 명시 (보존 비목표)
 - 속성 패널 매핑: line/arrow 선택 시 **채우기 조작이 `background` 대신 `color`(선 색)를 패치**. 테두리·그림자 UI는 line/arrow에서 숨김(상자에 적용되어 어색함). 투명도·위치크기·회전은 공통 적용
 - 삽입 기본 크기: 도형 240×160, 선·화살표 320×8
@@ -79,7 +79,7 @@
 - 회전된 요소: 드래그 리사이즈·스냅 제외(패널 수치로 조정) — 문서화
 - 선 기울기는 회전으로만, 굵기 고정 2px
 - line/arrow 내부 마크업은 저장 시 정준형으로 정규화(원문 보존 비목표 — 스펙 명시)
-- 화살표 marker id(`wd-arrow-head`)는 문서 내 중복될 수 있으나 모든 정의가 동일해 렌더 무해 (HTML 유효성 관점의 중복 id는 수용)
+- 회전 요소의 변 기준 정렬(왼쪽/오른쪽/위/아래)은 시각적 경계가 아닌 frame 기준 — 중심 정렬만 회전과 무관하게 정확 (한계)
 - v1 검증기·구버전 에디터는 신규 도형을 오류/opaque로 취급 — 문서 자체 렌더는 인라인 스타일이라 정상
 - 비표준 transform이 있는 요소에 에디터에서 회전을 적용하면: 1급 rotation이 transform을 새로 출력하면서 **extraStyle의 기존 transform과 중복 충돌** → 이를 막기 위해 `setElementRotation`은 extraStyle의 `transform` 키를 항상 제거(Plan 6 transition 잔재 제거와 동일 패턴)
 

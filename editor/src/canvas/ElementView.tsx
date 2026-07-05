@@ -1,5 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import { SHAPE_INNER_HTML, isLinear } from '../model/shapeSvg.ts'
+import { isLinear, shapeInnerHtml } from '../model/shapeSvg.ts'
 import type { SlideElement } from '../model/types.ts'
 import { cssTextToReact, styleFromModel } from './styleFromModel.ts'
 import { TextEditable } from './TextEditable.tsx'
@@ -46,7 +46,7 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
           <div
             className="el el-shape"
             style={styleFromModel(element.frame, element.extraStyle, element.rotation)}
-            dangerouslySetInnerHTML={{ __html: SHAPE_INNER_HTML[element.shape as 'line' | 'arrow'] }}
+            dangerouslySetInnerHTML={{ __html: shapeInnerHtml(element.shape as 'line' | 'arrow', element.id) }}
             {...handlers}
           />
         )

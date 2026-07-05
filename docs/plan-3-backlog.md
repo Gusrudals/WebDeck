@@ -58,3 +58,10 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - App.test의 window.prompt/alert 전역 할당 미복원 (현재 파일별 격리로 무해 — afterEach 복원 위생)
 - 템플릿 등록 실패 분기(checkRoundTrip 실패·quota) 자동 테스트 공백
 - layouts.ts 주석 "ai-guide의 검증된 레시피" — 표지는 하단 밴드 없는 변형이므로 "기반" 정도로 문구 완화
+
+## Plan 9 이월 (최종 리뷰에서 백로그 판정)
+
+- 회전 요소의 변 기준 정렬·검증기 캔버스 경계 경고가 frame 기준(회전 미반영) — 시각적 경계(회전 바운딩 박스) 계산 도입 검토
+- 사용자 지정 transform-origin이 있는 회전 요소는 선택 오버레이가 어긋남 (AI 문서 한정 코스메틱)
+- 회전 제스처 DRAG_THRESHOLD 부재·회전 핸들 키보드 접근성
+- fill="context-stroke" 지원 브라우저가 충분해지면 marker 색 처리를 표준 방식으로 단순화 검토
