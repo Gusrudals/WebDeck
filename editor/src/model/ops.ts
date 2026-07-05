@@ -23,7 +23,7 @@ function elementIndexOf(slide: Slide, elementId: string): number {
   return i
 }
 
-function mapKnownElement(doc: DeckDoc, slideId: string, elementId: string, fn: (el: KnownElement) => KnownElement): DeckDoc {
+export function mapKnownElement(doc: DeckDoc, slideId: string, elementId: string, fn: (el: KnownElement) => KnownElement): DeckDoc {
   return mapSlide(doc, slideId, (slide) => {
     const i = elementIndexOf(slide, elementId)
     const el = slide.elements[i]!
