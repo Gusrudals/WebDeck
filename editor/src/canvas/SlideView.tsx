@@ -1,6 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Slide } from '../model/types.ts'
 import { ElementView } from './ElementView.tsx'
+import type { TableInteraction } from './TableView.tsx'
 
 export interface SlideInteraction {
   selectedIds: string[]
@@ -8,6 +9,7 @@ export interface SlideInteraction {
   onElementPointerDown: (e: ReactPointerEvent, id: string) => void
   onElementDoubleClick: (id: string) => void
   onTextCommit: (id: string, html: string) => void
+  tableFor?: (id: string) => TableInteraction | undefined
 }
 
 export function SlideView({
@@ -40,6 +42,7 @@ export function SlideView({
                   onPointerDown: (e) => interaction.onElementPointerDown(e, el.id),
                   onDoubleClick: () => interaction.onElementDoubleClick(el.id),
                   onTextCommit: (html) => interaction.onTextCommit(el.id, html),
+                  table: interaction.tableFor?.(el.id),
                 }
               : undefined
           }

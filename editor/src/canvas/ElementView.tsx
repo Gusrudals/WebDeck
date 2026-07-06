@@ -2,6 +2,8 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { isLinear, shapeInnerHtml } from '../model/shapeSvg.ts'
 import type { SlideElement } from '../model/types.ts'
 import { cssTextToReact, styleFromModel } from './styleFromModel.ts'
+import { TableView } from './TableView.tsx'
+import type { TableInteraction } from './TableView.tsx'
 import { TextEditable } from './TextEditable.tsx'
 
 export interface ElementInteraction {
@@ -10,6 +12,7 @@ export interface ElementInteraction {
   onPointerDown: (e: ReactPointerEvent) => void
   onDoubleClick: () => void
   onTextCommit: (html: string) => void
+  table?: TableInteraction
 }
 
 export function ElementView({ element, interaction }: { element: SlideElement; interaction?: ElementInteraction }) {
@@ -40,6 +43,8 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
           <img src={element.src} alt={element.alt} style={cssTextToReact(element.imgStyle)} />
         </div>
       )
+    case 'table':
+      return <TableView element={element} elementHandlers={handlers} table={interaction?.table} />
     case 'shape':
       if (isLinear(element.shape)) {
         return (
