@@ -87,7 +87,7 @@
 <div class="el el-shape" data-shape="arrow" style="left:96px; top:400px; width:320px; height:8px; color:#374151; transform:rotate(45deg);"></div>
 ```
 
-**표 (v1.1)** — `el-table` 안에 `<table>` 1개. 셀은 td/th만, 병합은 colspan/rowspan. **정형(행별 스팬 합 = 열 수)이 아니면 편집 불가(opaque)로 보존만 된다.** `el-table` 바로 안에 `<table>` 외의 텍스트·주석이 섞여도 마찬가지로 편집 불가(opaque)로 보존만 된다(도형 안에 텍스트를 중첩하지 않는 것과 같은 원칙). 열 너비는 colgroup의 %:
+**표 (v1.1)** — `el-table` 안에 `<table>` 1개. 셀은 td/th만, 병합은 colspan/rowspan. **정형(행별 스팬 합 = 열 수)이 아니면 편집 불가(opaque)로 보존만 된다.** `el-table` 바로 안에 `<table>` 외의 텍스트가 섞여도 마찬가지로 편집 불가(opaque)로 보존만 된다(도형 안에 텍스트를 중첩하지 않는 것과 같은 원칙). 열 너비는 colgroup의 %:
 
 ```html
 <div class="el el-table" style="left:96px; top:200px; width:720px; height:160px;">

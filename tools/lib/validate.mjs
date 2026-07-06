@@ -227,6 +227,7 @@ function isWellFormedTable(table) {
     rows.push(cells)
   }
   const cols = rows[0].reduce((n, c) => n + c.colspan, 0)
+  if (cols === 0) return false
   const occupied = rows.map(() => Array(cols).fill(false))
   for (let r = 0; r < rows.length; r++) {
     let c = 0

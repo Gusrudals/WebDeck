@@ -171,6 +171,8 @@ test('el-table — 정형은 통과, 부정합·중첩·비셀 자식은 오류'
     wrapSlide('<div class="el el-table" style="left:0px; top:0px; width:400px; height:100px;"></div>'),
   )
   assert.ok(noTable.errors.some((e) => e.includes('el-table')))
+  const degenerate = validateWebdeck(tableEl('<tbody><tr></tr><tr></tr></tbody>'))
+  assert.ok(degenerate.errors.some((e) => e.includes('el-table')))
 })
 
 test('el-table — tbody 안 비-tr 자식은 오류 (재귀 반환값 폐기 회귀)', () => {
