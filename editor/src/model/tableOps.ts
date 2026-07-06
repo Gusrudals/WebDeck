@@ -1,5 +1,7 @@
 import { mapKnownElement } from './ops.ts'
-import type { CellAlign, DeckDoc, Frame, TableCell, TableElement } from './types.ts'
+import { parseInlineStyle } from './style.ts'
+import { parseTableMarkup } from './tableMarkup.ts'
+import type { CellAlign, DeckDoc, Frame, Slide, TableCell, TableElement } from './types.ts'
 
 export const DEFAULT_CELL_BORDER = '1px solid #d1d5db'
 export const DEFAULT_CELL_PADDING = '6px 10px'
@@ -325,4 +327,89 @@ export function setColWidths(doc: DeckDoc, slideId: string, elementId: string, w
   const current = peekTable(doc, slideId, elementId)
   if (current && widths.length !== current.colWidths.length) return doc
   return mapTable(doc, slideId, elementId, (el) => ({ ...el, colWidths: widths }))
+}
+
+const FALLBACK_FRAME: Frame = { left: 96, top: 200, width: 1088, height: 320 }
+
+/**
+ * 노드 바로 아래에 공백 아닌 텍스트 노드 또는 주석 노드가 있는지 — stray 텍스트/주석 소실 가드
+ * (브리프 Critical 보정). 플랜 스니펫은 `dom.body.children`/`root.children`(요소만) 검사라
+ * `<table>…</table>trailing텍스트`·`<div>캡션<table>…</table></div>` 꼴에서 표 밖 텍스트·주석이
+ * 조용히 소실된다 — Task 2에서 Critical로 잡힌 hasStrayText 결함과 동일 패턴이다(parse.ts의
+ * el-table 승격 가드 참고). 주석은 모델에 보존할 자리가 없으므로 있으면 무조건 변환을 거부한다
+ * (무손실 우선 — opaque로 남겨 원문 그대로 보존).
+ */
+function hasStrayContent(node: Element): boolean {
+  return Array.from(node.childNodes).some((n) => {
+    if (n.nodeType === 8) return true // Comment
+    if (n.nodeType === 3) return (n.textContent ?? '').trim() !== '' // Text
+    return false
+  })
+}
+
+/** opaque 원문에서 표를 추출한다 — 단일 table(±1겹 래퍼)만, 정형 파싱 실패 시 null (플랜 Task 6 스펙 §3) */
+export function tableFromOpaqueHtml(idGen: () => string, html: string): TableElement | null {
+  const dom = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
+  if (hasStrayContent(dom.body)) return null
+  const roots = Array.from(dom.body.children)
+  if (roots.length !== 1) return null
+  const root = roots[0]!
+  let tableEl: Element
+  let frame = FALLBACK_FRAME
+  if (root.tagName === 'TABLE') {
+    tableEl = root
+  } else if (root.children.length === 1 && root.children[0]!.tagName === 'TABLE') {
+    if (hasStrayContent(root)) return null
+    tableEl = root.children[0]!
+    const style = parseInlineStyle(root.getAttribute('style') ?? '')
+    // 브리프 주의(이탈): 플랜 스니펫 정규식 `/^-?\d+(\.\d+)?px$/`은 음수 width/height도 통과시킨다.
+    // width/height는 양수만 frame으로 인정(0 이하는 FALLBACK_FRAME) — left/top은 음수를 허용한다.
+    const nums = (['left', 'top', 'width', 'height'] as const).map((prop) => {
+      const v = style[prop]
+      if (v === undefined || !/^-?\d+(\.\d+)?px$/.test(v)) return NaN
+      const n = parseFloat(v)
+      return (prop === 'width' || prop === 'height') && !(n > 0) ? NaN : n
+    })
+    if (nums.every((n) => Number.isFinite(n))) {
+      frame = { left: nums[0]!, top: nums[1]!, width: nums[2]!, height: nums[3]! }
+    }
+  } else {
+    return null
+  }
+  const parsed = parseTableMarkup(tableEl)
+  if (!parsed) return null
+  return {
+    type: 'table', id: idGen(), frame: { ...frame }, rotation: 0,
+    extraStyle: {}, extraAttrs: {}, extraClasses: [],
+    colWidths: parsed.colWidths, rows: parsed.rows,
+  }
+}
+
+const probeIdGen = () => 'probe'
+
+/** 슬라이드 내 opaque 중 표로 변환 가능한 개수(UI 안내용) — probeIdGen으로 id를 소모하지 않는다 */
+export function convertibleOpaqueTableCount(slide: Slide): number {
+  return slide.elements.filter((e) => e.type === 'opaque' && tableFromOpaqueHtml(probeIdGen, e.html) !== null).length
+}
+
+/**
+ * 슬라이드의 opaque 요소 중 변환 가능한 것만 표(el-table)로 교체한다(요소 인덱스 유지).
+ * 하나도 변환하지 못하면 changed 플래그로 걸러 같은 doc 객체를 그대로 반환한다(toBe 계약 —
+ * mergeCells/splitCell/setColWidths와 동일한 참조 동일성 사유, no-op 경로는 mapTable을 거치지
+ * 않으므로 peekTable 단락이 불필요하다).
+ */
+export function convertOpaqueTables(doc: DeckDoc, slideId: string, idGen: () => string): DeckDoc {
+  let changed = false
+  const slides = doc.slides.map((s) => {
+    if (s.id !== slideId) return s
+    const elements = s.elements.map((e) => {
+      if (e.type !== 'opaque') return e
+      const t = tableFromOpaqueHtml(idGen, e.html)
+      if (!t) return e
+      changed = true
+      return t
+    })
+    return changed ? { ...s, elements } : s
+  })
+  return changed ? { ...doc, slides } : doc
 }

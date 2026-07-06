@@ -6,6 +6,8 @@ import { checkRoundTrip } from './roundtrip.ts'
 import {
   buildGrid,
   canMergeCells,
+  convertibleOpaqueTableCount,
+  convertOpaqueTables,
   createTable,
   insertCol,
   insertRow,
@@ -18,6 +20,7 @@ import {
   setCellsStyle,
   setColWidths,
   splitCell,
+  tableFromOpaqueHtml,
   toggleHeaderCells,
 } from './tableOps.ts'
 import { gridIsValid } from './tableMarkup.ts'
@@ -398,5 +401,80 @@ describe('완전 피복 빈 행 — Task 4 함수와의 상호작용', () => {
     expect(el.rows[0]!.map((c) => c.html)).toEqual(['0010', '11', '0212'])
     expect(el.rows[0]!.every((c) => c.rowspan === 1 && c.colspan === 1)).toBe(true)
     expect(el.rows[1]!.map((c) => c.html)).toEqual(['20', '21', '22'])
+  })
+})
+
+describe('opaque 표 변환', () => {
+  const OPAQUE_WRAPPED = '<div class="el" style="left:96px; top:200px; width:600px; height:200px;"><table><tbody><tr><td>a</td><td>b</td></tr></tbody></table></div>'
+  const OPAQUE_BARE = '<table><tbody><tr><td colspan="2">x</td></tr><tr><td>a</td><td>b</td></tr></tbody></table>'
+  const OPAQUE_BAD = '<div class="fancy">위젯</div>'
+
+  test('래퍼 frame이 있으면 사용, 정형 파싱 성공 시 TableElement', () => {
+    const t = tableFromOpaqueHtml(createIdGen('v'), OPAQUE_WRAPPED)!
+    expect(t.frame).toEqual({ left: 96, top: 200, width: 600, height: 200 })
+    expect(t.rows[0]).toHaveLength(2)
+  })
+
+  test('맨몸 table은 기본 frame(96,200,1088,320)', () => {
+    const t = tableFromOpaqueHtml(createIdGen('v'), OPAQUE_BARE)!
+    expect(t.frame).toEqual({ left: 96, top: 200, width: 1088, height: 320 })
+    expect(t.rows[0]![0]!.colspan).toBe(2)
+  })
+
+  test('표가 아니면 null', () => {
+    expect(tableFromOpaqueHtml(createIdGen('v'), OPAQUE_BAD)).toBeNull()
+  })
+
+  test('convertOpaqueTables — 변환 가능한 것만 교체(인덱스 유지), 없으면 같은 doc', () => {
+    const doc = parseWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">${OPAQUE_BAD}${OPAQUE_WRAPPED}</section>
+</main></body></html>`)
+    expect(convertibleOpaqueTableCount(doc.slides[0]!)).toBe(1)
+    const out = convertOpaqueTables(doc, doc.slides[0]!.id, createIdGen('c'))
+    expect(out.slides[0]!.elements[0]!.type).toBe('opaque')
+    expect(out.slides[0]!.elements[1]!.type).toBe('table')
+    expect(checkRoundTrip(out)).toBeNull()
+    expect(convertOpaqueTables(out, out.slides[0]!.id, createIdGen('c'))).toBe(out)
+  })
+
+  // 브리프 Critical 보정: 플랜 스니펫은 `dom.body.children`/`root.children`(요소만) 검사라
+  // `<table>…</table>trailing텍스트`·`<div>캡션<table>…</table></div>` 꼴에서 표 밖 텍스트/주석이
+  // 조용히 소실된다(Task 2에서 잡힌 hasStrayText 결함과 동일 패턴 — parse.ts의 el-table 승격 가드 참고).
+  // body 수준·래퍼 root 수준 모두 childNodes를 검사해 공백 아닌 텍스트/주석이 있으면 변환을 거부(null)한다.
+  describe('stray 텍스트·주석 소실 가드 (리뷰 회귀)', () => {
+    test('body 수준 stray 텍스트(표 뒤에 남는 텍스트) — 변환 거부', () => {
+      const html = '<table><tbody><tr><td>a</td></tr></tbody></table>남은 텍스트'
+      expect(tableFromOpaqueHtml(createIdGen('v'), html)).toBeNull()
+    })
+
+    test('래퍼 root 수준 stray 텍스트(캡션) — 변환 거부', () => {
+      const html = '<div style="left:0px; top:0px; width:100px; height:100px;">caption<table><tbody><tr><td>a</td></tr></tbody></table></div>'
+      expect(tableFromOpaqueHtml(createIdGen('v'), html)).toBeNull()
+    })
+
+    test('body 수준 주석 노드 — 변환 거부', () => {
+      const html = '<table><tbody><tr><td>a</td></tr></tbody></table><!-- c -->'
+      expect(tableFromOpaqueHtml(createIdGen('v'), html)).toBeNull()
+    })
+
+    test('래퍼 root 수준 주석 노드 — 변환 거부', () => {
+      const html = '<div style="left:0px; top:0px; width:100px; height:100px;"><!-- c --><table><tbody><tr><td>a</td></tr></tbody></table></div>'
+      expect(tableFromOpaqueHtml(createIdGen('v'), html)).toBeNull()
+    })
+  })
+
+  // 브리프 주의: 플랜 스니펫의 frame 정규식 `/^-?\d+(\.\d+)?px$/`은 음수 width/height도 통과시킨다.
+  // width/height는 양수만 frame으로 인정하고, 아니면 FALLBACK_FRAME을 쓴다(이탈, left/top 음수는 허용).
+  test('frame 정규식 보정 — width/height 음수·0은 FALLBACK_FRAME, left/top 음수는 허용', () => {
+    const negWidth = '<div style="left:10px; top:10px; width:-100px; height:100px;"><table><tbody><tr><td>a</td></tr></tbody></table></div>'
+    expect(tableFromOpaqueHtml(createIdGen('v'), negWidth)!.frame).toEqual({ left: 96, top: 200, width: 1088, height: 320 })
+
+    const zeroHeight = '<div style="left:10px; top:10px; width:100px; height:0px;"><table><tbody><tr><td>a</td></tr></tbody></table></div>'
+    expect(tableFromOpaqueHtml(createIdGen('v'), zeroHeight)!.frame).toEqual({ left: 96, top: 200, width: 1088, height: 320 })
+
+    const negLeftTop = '<div style="left:-10px; top:-20px; width:100px; height:100px;"><table><tbody><tr><td>a</td></tr></tbody></table></div>'
+    expect(tableFromOpaqueHtml(createIdGen('v'), negLeftTop)!.frame).toEqual({ left: -10, top: -20, width: 100, height: 100 })
   })
 })
