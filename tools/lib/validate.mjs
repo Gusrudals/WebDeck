@@ -1,6 +1,6 @@
 import { parse } from 'node-html-parser'
 
-export const ELEMENT_TYPES = ['el-text', 'el-image', 'el-shape']
+export const ELEMENT_TYPES = ['el-text', 'el-image', 'el-shape', 'el-table']
 
 const REQUIRED_STYLE_PROPS = ['left', 'top', 'width', 'height']
 const PX_VALUE = /^-?\d+(\.\d+)?px$/
@@ -149,6 +149,18 @@ function validateSlide(slide, num, ctx) {
         }
       }
     }
+    if (type === 'el-table') {
+      const hasStrayText = el.childNodes.some((n) => n.nodeType === 3 && n.text.trim() !== '')
+      if (hasStrayText) {
+        errors.push(`${label}: el-table 안에는 <table> 외 텍스트를 둘 수 없습니다`)
+      }
+      const tables = el.childNodes.filter((n) => n.nodeType === 1)
+      if (tables.length !== 1 || tables[0].rawTagName.toLowerCase() !== 'table') {
+        errors.push(`${label}: el-table에는 <table>이 정확히 1개 있어야 합니다`)
+      } else if (!isWellFormedTable(tables[0])) {
+        errors.push(`${label}: el-table의 표 구조가 정형이 아닙니다 (td/th만, 스팬 양의 정수, 행별 그리드 정합)`)
+      }
+    }
   }
 }
 
@@ -168,4 +180,67 @@ function validateImage(el, label, { errors, warnings }) {
   if (img.getAttribute('alt') === undefined || img.getAttribute('alt') === null) {
     warnings.push(`${label}: <img>에 alt 속성이 없습니다`)
   }
+}
+
+/**
+ * table 직속 자식을 순회해 tr을 수집한다 — 에디터 tableMarkup.ts의 collectRows와 동일 의미론
+ * (재귀 없음): colgroup은 table 직계에서만 skip, tr은 수집, thead/tbody 안은 tr만 허용(그 외는
+ * 즉시 부정형), 그 외 태그(caption 등)나 thead/tbody 안의 비-tr 자식이 있으면 null.
+ */
+function collectTableRows(table) {
+  const trs = []
+  for (const child of table.childNodes.filter((n) => n.nodeType === 1)) {
+    const tag = child.rawTagName.toLowerCase()
+    if (tag === 'colgroup') continue
+    if (tag === 'tr') {
+      trs.push(child)
+      continue
+    }
+    if (tag === 'thead' || tag === 'tbody') {
+      for (const inner of child.childNodes.filter((n) => n.nodeType === 1)) {
+        if (inner.rawTagName.toLowerCase() !== 'tr') return null
+        trs.push(inner)
+      }
+      continue
+    }
+    return null // caption·tfoot 등 미지원 자식, 혹은 중첩 thead/tbody — 정형 아님
+  }
+  return trs
+}
+
+/** table 요소의 그리드 정합을 검사한다 — 에디터 gridIsValid와 동일 알고리즘 */
+function isWellFormedTable(table) {
+  const trs = collectTableRows(table)
+  if (!trs || trs.length === 0) return false
+  const rows = []
+  for (const tr of trs) {
+    const cells = []
+    for (const cellEl of tr.childNodes.filter((n) => n.nodeType === 1)) {
+      const tag = cellEl.rawTagName.toLowerCase()
+      if (tag !== 'td' && tag !== 'th') return false
+      if (cellEl.querySelector('table')) return false
+      const colspan = Number(cellEl.getAttribute('colspan') ?? '1')
+      const rowspan = Number(cellEl.getAttribute('rowspan') ?? '1')
+      if (!Number.isInteger(colspan) || !Number.isInteger(rowspan) || colspan < 1 || rowspan < 1) return false
+      cells.push({ colspan, rowspan })
+    }
+    rows.push(cells)
+  }
+  const cols = rows[0].reduce((n, c) => n + c.colspan, 0)
+  const occupied = rows.map(() => Array(cols).fill(false))
+  for (let r = 0; r < rows.length; r++) {
+    let c = 0
+    for (const cell of rows[r]) {
+      while (c < cols && occupied[r][c]) c++
+      if (c >= cols || c + cell.colspan > cols || r + cell.rowspan > rows.length) return false
+      for (let rr = r; rr < r + cell.rowspan; rr++) {
+        for (let cc = c; cc < c + cell.colspan; cc++) {
+          if (occupied[rr][cc]) return false
+          occupied[rr][cc] = true
+        }
+      }
+      c += cell.colspan
+    }
+  }
+  return occupied.every((row) => row.every(Boolean))
 }

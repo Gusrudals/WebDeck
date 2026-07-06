@@ -150,3 +150,63 @@ test('line/arrow는 svg 자식 1개만 허용한다', () => {
   const bad = validateWebdeck(wrap('<div class="el el-shape" data-shape="arrow" style="left:0px; top:0px; width:100px; height:8px;"><svg></svg><p>x</p></div>'))
   assert.ok(bad.errors.some((e) => e.includes('svg')))
 })
+
+const wrapSlide = (el) => `<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">${el}</section></main></body></html>`
+const tableEl = (inner) =>
+  wrapSlide(
+    `<div class="el el-table" style="left:0px; top:0px; width:400px; height:100px;"><table>${inner}</table></div>`,
+  )
+
+test('el-table — 정형은 통과, 부정합·중첩·비셀 자식은 오류', () => {
+  const ok = validateWebdeck(tableEl('<tbody><tr><th colspan="2">H</th></tr><tr><td>a</td><td>b</td></tr></tbody>'))
+  assert.deepStrictEqual(ok.errors, [])
+  const mismatch = validateWebdeck(tableEl('<tbody><tr><td>a</td><td>b</td></tr><tr><td>c</td></tr></tbody>'))
+  assert.ok(mismatch.errors.some((e) => e.includes('el-table')))
+  const nested = validateWebdeck(tableEl('<tbody><tr><td><table></table></td></tr></tbody>'))
+  assert.ok(nested.errors.some((e) => e.includes('el-table')))
+  const noTable = validateWebdeck(
+    wrapSlide('<div class="el el-table" style="left:0px; top:0px; width:400px; height:100px;"></div>'),
+  )
+  assert.ok(noTable.errors.some((e) => e.includes('el-table')))
+})
+
+test('el-table — tbody 안 비-tr 자식은 오류 (재귀 반환값 폐기 회귀)', () => {
+  // 유효한 tr을 담은 tbody 옆에 비정형 tbody를 둔다 — 재귀 반환값을 버리는 구현이면
+  // 두 번째 tbody의 위반이 조용히 무시되고(trs가 첫 tbody의 tr만으로 비어있지 않게 되어)
+  // 통과해버리는 회귀를 잡는다.
+  const r = validateWebdeck(tableEl('<tbody><tr><td>a</td></tr></tbody><tbody><div>bad</div></tbody>'))
+  assert.ok(r.errors.some((e) => e.includes('el-table')))
+})
+
+test('el-table — 중첩 tbody는 오류 (중첩 thead/tbody 허용 회귀)', () => {
+  const r = validateWebdeck(tableEl('<tbody><tbody><tr><td>a</td></tr></tbody></tbody>'))
+  assert.ok(r.errors.some((e) => e.includes('el-table')))
+})
+
+test('el-table — caption은 오류 (기존 정형 오류 문구)', () => {
+  const r = validateWebdeck(tableEl('<caption>c</caption><tbody><tr><td>a</td></tr></tbody>'))
+  assert.ok(r.errors.some((e) => e.includes('정형이 아닙니다')))
+})
+
+test('el-table 직계에 공백 아닌 텍스트가 있으면 오류 (에디터 hasStrayText 정합)', () => {
+  const r = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-table" style="left:0px; top:0px; width:400px; height:100px;">텍스트<table><tbody><tr><td>a</td></tr></tbody></table></div>',
+    ),
+  )
+  assert.ok(r.errors.some((e) => e.includes('el-table') && e.includes('텍스트')))
+  const okBlank = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-table" style="left:0px; top:0px; width:400px; height:100px;">\n  <table><tbody><tr><td>a</td></tr></tbody></table>\n</div>',
+    ),
+  )
+  assert.deepStrictEqual(okBlank.errors, [])
+})
+
+test('el-table — 완전 피복 빈 행(rowspan 확장, mergeCells 산출물)은 통과', () => {
+  const r = validateWebdeck(tableEl('<tbody><tr><td colspan="2" rowspan="2">M</td></tr><tr></tr></tbody>'))
+  assert.deepStrictEqual(r.errors, [])
+})

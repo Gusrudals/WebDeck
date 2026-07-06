@@ -19,6 +19,7 @@
 12. `el-shape`의 `data-shape`는 `rect`/`ellipse`/`rounded`/`line`/`arrow` 5종 (v1.1) — line/arrow의 자식은 `<svg>` 1개만 허용 (오류)
 13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현 (오류)
 14. `data-transition`(슬라이드 전환)은 `fade`/`push`만 지원 — 선택 속성 (오류)
+15. `el-table`에는 `<table>` 정확히 1개, 셀은 td/th만, 스팬은 양의 정수, 행별 그리드 정합 (오류)
 
 ## 문서 골격
 
@@ -84,6 +85,20 @@
 <div class="el el-shape" data-shape="ellipse" style="left:96px; top:200px; width:240px; height:160px; background:var(--wd-accent); border-radius:50%;"></div>
 <div class="el el-shape" data-shape="rounded" style="left:96px; top:200px; width:240px; height:160px; background:var(--wd-accent); border-radius:24px;"></div>
 <div class="el el-shape" data-shape="arrow" style="left:96px; top:400px; width:320px; height:8px; color:#374151; transform:rotate(45deg);"></div>
+```
+
+**표 (v1.1)** — `el-table` 안에 `<table>` 1개. 셀은 td/th만, 병합은 colspan/rowspan. **정형(행별 스팬 합 = 열 수)이 아니면 편집 불가(opaque)로 보존만 된다.** `el-table` 바로 안에 `<table>` 외의 텍스트·주석이 섞여도 마찬가지로 편집 불가(opaque)로 보존만 된다(도형 안에 텍스트를 중첩하지 않는 것과 같은 원칙). 열 너비는 colgroup의 %:
+
+```html
+<div class="el el-table" style="left:96px; top:200px; width:720px; height:160px;">
+  <table>
+    <colgroup><col style="width:40%"><col style="width:30%"><col style="width:30%"></colgroup>
+    <tbody>
+      <tr><th colspan="3" style="border:1px solid #d1d5db; padding:6px 10px; background:var(--wd-accent);"><p>분기 실적</p></th></tr>
+      <tr><td style="border:1px solid #d1d5db; padding:6px 10px;"><p>항목</p></td><td style="border:1px solid #d1d5db; padding:6px 10px;"><p>1Q</p></td><td style="border:1px solid #d1d5db; padding:6px 10px;"><p>2Q</p></td></tr>
+    </tbody>
+  </table>
+</div>
 ```
 
 ## 레이아웃 레시피 (검증된 좌표)
