@@ -42,6 +42,6 @@ describe('SlideView', () => {
 
 test('CanvasArea는 현재 슬라이드를 렌더링한다', () => {
   const dispatch = vi.fn()
-  render(<CanvasArea doc={report} slideIndex={1} selectedIds={[]} editingTextId={null} dispatch={dispatch} />)
+  render(<CanvasArea doc={report} slideIndex={1} selectedIds={[]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />)
   expect(screen.getByText('목차')).toBeTruthy()
 })

@@ -1,7 +1,11 @@
 import { fireEvent, render } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
+import type { TableSel } from '../App.tsx'
+import { createIdGen } from '../model/id.ts'
+import { addElement } from '../model/ops.ts'
 import type { DeckDoc } from '../model/types.ts'
 import { parseWebdeck } from '../model/parse.ts'
+import { createTable } from '../model/tableOps.ts'
 import { CanvasArea } from './CanvasArea.tsx'
 
 // happy-dom(20.x)의 WheelEvent는 스펙과 달리 MouseEvent를 상속하지 않아
@@ -47,7 +51,7 @@ function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
 function renderCanvas(selectedIds: string[] = []) {
   const dispatch = vi.fn()
   const utils = render(
-    <CanvasArea doc={DOC} slideIndex={0} selectedIds={selectedIds} editingTextId={null} dispatch={dispatch} />,
+    <CanvasArea doc={DOC} slideIndex={0} selectedIds={selectedIds} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
   )
   return { dispatch, ...utils }
 }
@@ -70,7 +74,7 @@ function renderCanvasWithSelection() {
   const dispatch = vi.fn()
   const elId = DOC_SHAPE_ONLY.slides[0]!.elements[0]!.id
   const utils = render(
-    <CanvasArea doc={DOC_SHAPE_ONLY} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} />,
+    <CanvasArea doc={DOC_SHAPE_ONLY} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
   )
   return { dispatch, ...utils }
 }
@@ -80,7 +84,7 @@ function renderCanvasWithRotatedSelection() {
   const dispatch = vi.fn()
   const elId = DOC_ROTATED.slides[0]!.elements[0]!.id
   const utils = render(
-    <CanvasArea doc={DOC_ROTATED} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} />,
+    <CanvasArea doc={DOC_ROTATED} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
   )
   return { dispatch, ...utils }
 }
@@ -112,7 +116,7 @@ test('이미 선택된 요소 클릭은 선택을 유지한다', () => {
 test('텍스트 편집 중에는 요소 클릭이 선택을 바꾸지 않는다', () => {
   const dispatch = vi.fn()
   const { container } = render(
-    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} />,
+    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
   )
   fireEvent.pointerDown(container.querySelector('.el-shape')!, { clientX: 310, clientY: 310 })
   expect(dispatch).not.toHaveBeenCalled()
@@ -155,7 +159,7 @@ test('단일 이동은 슬라이드 중앙에 스냅하고 가이드를 그린�
   const dispatch = vi.fn()
   const elId = DOC_ONE.slides[0]!.elements[0]!.id
   const { getByText, container } = render(
-    <CanvasArea doc={DOC_ONE} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} />,
+    <CanvasArea doc={DOC_ONE} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
   )
   fireEvent.pointerDown(getByText('홀로'), { clientX: 0, clientY: 0 })
   fireEvent.pointerMove(window, { clientX: 594, clientY: 100 })
@@ -282,7 +286,7 @@ test('도형 더블클릭은 편집을 시작하지 않는다', () => {
 function renderEditing() {
   const dispatch = vi.fn()
   const utils = render(
-    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} />,
+    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
   )
   const editable = utils.container.querySelector('.text-editable') as HTMLElement
   return { dispatch, editable, ...utils }
@@ -350,4 +354,142 @@ test('배율 200%에서 드래그 좌표가 보정된다', () => {
   const doc = appliedDoc(dispatch)!
   // 화면 100px ÷ 배율 2 = 모델 50px
   expect(doc.slides[0]!.elements[0]!).toMatchObject({ frame: { left: 50, top: 0 } })
+})
+
+// ---- 표 셀 선택·편집 인터랙션 (Task 10) ----
+
+// 2×2 표 1개 문서 픽스처 — 빈 슬라이드에 createTable로 표를 추가한다(기존 tableOps/TableView 테스트 관례)
+function makeTableDoc() {
+  const base = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"></section>
+</main></body></html>`)
+  const table = createTable(createIdGen('tb'), 2, 2, { left: 100, top: 100, width: 400, height: 120 })
+  const doc = addElement(base, base.slides[0]!.id, table)
+  return { doc, tableId: table.id }
+}
+
+// 표가 선택된 상태 렌더 헬퍼 — 기존 renderCanvasWithSelection 관례를 표로 확장
+function renderCanvasWithTable() {
+  const dispatch = vi.fn()
+  const setTableSel = vi.fn()
+  const { doc, tableId } = makeTableDoc()
+  const tableSel: TableSel = { elementId: tableId, anchor: [0, 0], extent: [0, 0] }
+  const utils = render(
+    <CanvasArea
+      doc={doc}
+      slideIndex={0}
+      selectedIds={[tableId]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={tableSel}
+      setTableSel={setTableSel}
+    />,
+  )
+  return { dispatch, setTableSel, tableId, doc, ...utils }
+}
+
+test('선택된 표의 셀 클릭은 tableSel을 설정한다', () => {
+  const { setTableSel, container } = renderCanvasWithTable()
+  fireEvent.pointerDown(container.querySelector('[data-r="1"][data-c="0"]')!)
+  expect(setTableSel).toHaveBeenCalledWith(expect.objectContaining({ anchor: [1, 0], extent: [1, 0] }))
+})
+
+test('셀 더블클릭 → 편집 → blur 커밋이 1 APPLY_DOC + END_TEXT_EDIT', () => {
+  const { dispatch, container } = renderCanvasWithTable()
+  const cell = container.querySelector('[data-r="0"][data-c="0"]')!
+  fireEvent.doubleClick(cell)
+  expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'START_TEXT_EDIT' }))
+  const editable = container.querySelector('[contenteditable]')!
+  editable.innerHTML = '<p>새 내용</p>'
+  fireEvent.blur(editable)
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const el = (applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!
+  if (el.type !== 'table') return
+  expect(el.rows[0]![0]!.html).toBe('<p>새 내용</p>')
+})
+
+test('마지막 셀 Tab은 행을 추가한다', () => {
+  const { dispatch, container } = renderCanvasWithTable()
+  fireEvent.doubleClick(container.querySelector('[data-r="1"][data-c="1"]')!)
+  const editable = container.querySelector('[contenteditable]')!
+  fireEvent.keyDown(editable, { key: 'Tab' })
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies.length).toBeGreaterThanOrEqual(1)
+  const el = (applies.at(-1)![0].doc as DeckDoc).slides[0]!.elements[0]!
+  if (el.type !== 'table') return
+  expect(el.rows).toHaveLength(3)
+})
+
+test('열 경계 드래그는 pointerup에 1 APPLY_DOC으로 colWidths를 갱신한다', () => {
+  const { dispatch, container } = renderCanvasWithTable()
+  const handle = container.querySelector('.col-resize-handle')!
+  fireEvent.pointerDown(handle, { clientX: 200, clientY: 40 })
+  fireEvent.pointerMove(window, { clientX: 240, clientY: 40 })
+  fireEvent.pointerUp(window)
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const el = (applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!
+  if (el.type !== 'table') return
+  expect(el.colWidths[0]).not.toBeCloseTo(50, 1)
+  expect(el.colWidths[0]! + el.colWidths[1]!).toBeCloseTo(100, 1)
+})
+
+// ---- 브리프 보정 회귀 테스트 (Critical 1·2) ----
+
+test('회귀(Critical 1): Tab 이동 후에도 START_TEXT_EDIT이 재발화되어 단축키 억제가 유지된다', () => {
+  // 플랜 스니펫대로면 onCellTab이 setEditingCell만 하고 START_TEXT_EDIT을 다시 dispatch하지
+  // 않는다 — 그러면 commitCell의 END_TEXT_EDIT 이후 editingTextId가 null로 남아 다음 셀에서
+  // Backspace가 useShortcuts의 억제를 뚫고 표 요소를 삭제한다(useShortcuts.ts:30,85).
+  const { dispatch, container } = renderCanvasWithTable()
+  fireEvent.doubleClick(container.querySelector('[data-r="0"][data-c="0"]')!)
+  const editable = container.querySelector('[contenteditable]')!
+  fireEvent.keyDown(editable, { key: 'Tab' })
+  const types = dispatch.mock.calls.map(([a]) => (a as { type: string }).type)
+  const endIdx = types.lastIndexOf('END_TEXT_EDIT')
+  expect(endIdx).toBeGreaterThanOrEqual(0)
+  // END_TEXT_EDIT(커밋) 이후에 START_TEXT_EDIT이 다시 존재해야 편집 상태가 이어진다
+  expect(types.indexOf('START_TEXT_EDIT', endIdx + 1)).toBeGreaterThan(endIdx)
+})
+
+test('회귀(Critical 2): 마지막 셀 내용 변경 후 Tab은 커밋된 내용과 새 행을 모두 보존한다', () => {
+  // 플랜 스니펫대로면 onCellTab의 insertRow가 커밋 전 stale doc 클로저를 기반으로 두 번째
+  // APPLY_DOC을 디스패치해 방금 커밋된 셀 내용을 덮어 사라지게 한다. pendingDocRef로 방금
+  // 커밋된 doc 위에 insertRow를 적용해야 두 변경이 공존한다.
+  const { dispatch, container } = renderCanvasWithTable()
+  fireEvent.doubleClick(container.querySelector('[data-r="1"][data-c="1"]')!)
+  const editable = container.querySelector('[contenteditable]')!
+  editable.innerHTML = '<p>마지막 내용</p>'
+  fireEvent.keyDown(editable, { key: 'Tab' })
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(2)
+  const last = (applies.at(-1)![0].doc as DeckDoc).slides[0]!.elements[0]!
+  if (last.type !== 'table') return
+  expect(last.rows).toHaveLength(3)
+  expect(last.rows[1]![1]!.html).toBe('<p>마지막 내용</p>')
+})
+
+test('보정(Minor·계약 ⑧): 선택 해제 후 같은 표 재선택 시 이전 편집 셀이 되살아나지 않는다', () => {
+  const { doc, tableId, dispatch, container, rerender } = renderCanvasWithTable()
+  fireEvent.doubleClick(container.querySelector('[data-r="0"][data-c="0"]')!)
+  expect(container.querySelector('[contenteditable]')).toBeTruthy()
+  // blur 없이 선택 해제(패널/키보드 경유 시나리오) — editingCell이 스테일로 남으면 안 된다
+  rerender(
+    <CanvasArea doc={doc} slideIndex={0} selectedIds={[]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+  )
+  rerender(
+    <CanvasArea
+      doc={doc}
+      slideIndex={0}
+      selectedIds={[tableId]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+    />,
+  )
+  expect(container.querySelector('[contenteditable]')).toBeNull()
 })

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
+import type { TableSel } from '../App.tsx'
 import { moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
-import type { DeckDoc, Frame } from '../model/types.ts'
+import { flattenAnchors, insertRow, setCellHtml, setColWidths } from '../model/tableOps.ts'
+import type { DeckDoc, Frame, TableElement } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction } from '../state/store.ts'
 import { angleFromCenter, buildSnapTargets, resizeFrame, snapAngle, snapMove, snapResize } from './geometry.ts'
@@ -9,6 +11,7 @@ import type { Guide, ResizeHandle, SnapTargets } from './geometry.ts'
 import { SelectionOverlay } from './SelectionOverlay.tsx'
 import { SlideView } from './SlideView.tsx'
 import { extractThemeVars } from './styleFromModel.ts'
+import type { TableInteraction } from './TableView.tsx'
 
 const MARGIN = 48
 const DRAG_THRESHOLD = 3
@@ -42,7 +45,15 @@ interface RotateGesture {
   rotated: boolean
 }
 
-type Gesture = MoveGesture | ResizeGesture | RotateGesture
+interface ColResizeGesture {
+  kind: 'colresize'
+  slideId: string
+  id: string
+  widths: number[]
+  resized: boolean
+}
+
+type Gesture = MoveGesture | ResizeGesture | RotateGesture | ColResizeGesture
 
 export interface CanvasAreaProps {
   doc: DeckDoc
@@ -50,9 +61,11 @@ export interface CanvasAreaProps {
   selectedIds: string[]
   editingTextId: string | null
   dispatch: Dispatch<EditorAction>
+  tableSel: TableSel | null
+  setTableSel: (s: TableSel | null) => void
 }
 
-export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispatch }: CanvasAreaProps) {
+export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispatch, tableSel, setTableSel }: CanvasAreaProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [fitScale, setFitScale] = useState(1)
   const [zoom, setZoom] = useState<'fit' | number>('fit')
@@ -60,6 +73,26 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
   const scaleRef = useRef(1)
   scaleRef.current = scale
   const [gesture, setGesture] = useState<Gesture | null>(null)
+  const [editingCell, setEditingCell] = useState<{ elementId: string; r: number; c: number } | null>(null)
+  const cellDragRef = useRef(false)
+  // Critical 보정 2: 셀 커밋(APPLY_DOC) 직후 같은 동기 틱에서 onCellTab의 행 추가가 이어질 때
+  // doc prop은 아직 재렌더 전이라 스테일하다 — 방금 커밋한 doc을 여기 저장해 그 위에 이어 붙인다.
+  const pendingDocRef = useRef<DeckDoc | null>(null)
+
+  useEffect(() => {
+    pendingDocRef.current = null
+  }, [doc])
+
+  useEffect(() => {
+    setEditingCell(null)
+  }, [slideIndex])
+
+  useEffect(() => {
+    // Minor 보정(계약 ⑧): 표를 유지한 채여도 선택 요소 집합이 바뀌면(패널/키보드 경유로
+    // blur 없이 다른 요소가 선택되는 경우) editingCell을 초기화한다 — 안 그러면 같은 표를
+    // 재선택했을 때 과거 편집 셀이 되살아난다.
+    setEditingCell((cell) => (cell && !selectedIds.includes(cell.elementId) ? null : cell))
+  }, [selectedIds])
 
   useEffect(() => {
     function fit() {
@@ -101,6 +134,10 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     if (gesture.kind === 'rotate') {
       if (!gesture.rotated) return doc
       return setElementRotation(doc, gesture.slideId, gesture.id, gesture.rotation)
+    }
+    if (gesture.kind === 'colresize') {
+      if (!gesture.resized) return doc
+      return setColWidths(doc, gesture.slideId, gesture.id, gesture.widths)
     }
     if (!gesture.resized) return doc
     return setElementFrame(doc, gesture.slideId, gesture.id, gesture.frame)
@@ -250,6 +287,124 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     window.addEventListener('pointercancel', onCancel)
   }
 
+  const selectedTable =
+    selectedIds.length === 1
+      ? slide.elements.filter(isKnownElement).find((el): el is TableElement => el.id === selectedIds[0] && el.type === 'table')
+      : undefined
+
+  const commitCell = (el: TableElement, r: number, c: number, html: string) => {
+    const anchors = flattenAnchors(el)
+    const target = anchors.find((a) => a.r === r && a.c === c)
+    if (target && target.cell.html !== html) {
+      const next = setCellHtml(doc, slide.id, el.id, r, c, html)
+      pendingDocRef.current = next
+      dispatch({ type: 'APPLY_DOC', doc: next })
+    }
+    dispatch({ type: 'END_TEXT_EDIT' })
+    setEditingCell(null)
+  }
+
+  const tableFor = (id: string): TableInteraction | undefined => {
+    if (!selectedTable || selectedTable.id !== id) return undefined
+    const el = selectedTable
+    return {
+      selectedRange:
+        tableSel && tableSel.elementId === id
+          ? { r1: tableSel.anchor[0], c1: tableSel.anchor[1], r2: tableSel.extent[0], c2: tableSel.extent[1] }
+          : null,
+      editingCell: editingCell && editingCell.elementId === id ? { r: editingCell.r, c: editingCell.c } : null,
+      onCellPointerDown: (e, r, c) => {
+        if (editingCell) return // 편집 중엔 셀 클릭이 캐럿 이동 — 선택 갱신 없이 통과시킨다
+        e.stopPropagation()
+        if (e.shiftKey && tableSel && tableSel.elementId === id) {
+          setTableSel({ ...tableSel, extent: [r, c] })
+          return
+        }
+        setTableSel({ elementId: id, anchor: [r, c], extent: [r, c] })
+        cellDragRef.current = true
+        const stop = () => {
+          cellDragRef.current = false
+          window.removeEventListener('pointerup', stop)
+          window.removeEventListener('pointercancel', stop)
+        }
+        window.addEventListener('pointerup', stop)
+        window.addEventListener('pointercancel', stop)
+      },
+      onCellPointerEnter: (r, c) => {
+        if (cellDragRef.current && tableSel && tableSel.elementId === id) {
+          setTableSel({ ...tableSel, extent: [r, c] })
+        }
+      },
+      onCellDoubleClick: (r, c) => {
+        setEditingCell({ elementId: id, r, c })
+        dispatch({ type: 'START_TEXT_EDIT', id })
+      },
+      onCellCommit: (r, c, html) => commitCell(el, r, c, html),
+      onCellTab: (r, c, backward) => {
+        const anchors = flattenAnchors(el)
+        const idx = anchors.findIndex((a) => a.r === r && a.c === c)
+        const nextIdx = backward ? idx - 1 : idx + 1
+        if (nextIdx < 0) return
+        if (nextIdx >= anchors.length) {
+          // 마지막 셀 Tab = 행 추가 후 새 행 첫 앵커 편집.
+          // Critical 보정 2: 같은 동기 틱에서 방금 commitCell이 커밋한 doc(pendingDocRef)이
+          // 있으면 그 위에 insertRow를 적용한다 — 스테일 doc(prop)을 기반으로 하면 방금
+          // 커밋된 셀 내용이 두 번째 APPLY_DOC에 의해 덮여 사라진다.
+          const base = pendingDocRef.current ?? doc
+          const grown = insertRow(base, slide.id, el.id, el.rows.length)
+          pendingDocRef.current = grown
+          dispatch({ type: 'APPLY_DOC', doc: grown })
+          setEditingCell({ elementId: id, r: el.rows.length, c: 0 })
+          // Critical 보정 1: 다음 셀 편집으로 넘어갈 때도 START_TEXT_EDIT을 재발화해야
+          // editingTextId가 유지되어 useShortcuts의 단축키 억제가 계속 적용된다 — 안 하면
+          // 다음 셀에서의 Backspace가 표 요소 자체를 삭제해버린다.
+          dispatch({ type: 'START_TEXT_EDIT', id })
+          return
+        }
+        const next = anchors[nextIdx]!
+        setEditingCell({ elementId: id, r: next.r, c: next.c })
+        dispatch({ type: 'START_TEXT_EDIT', id })
+      },
+      onColBorderPointerDown: (e, leftCol) => beginColResize(e, el, leftCol),
+    }
+  }
+
+  const beginColResize = (e: ReactPointerEvent, el: TableElement, leftCol: number) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const startX = e.clientX
+    const orig = el.colWidths
+    const pairPct = orig[leftCol]! + orig[leftCol + 1]!
+    const docAtStart = doc
+    const g: ColResizeGesture = { kind: 'colresize', slideId: slide.id, id: el.id, widths: orig, resized: false }
+    const onMove = (ev: PointerEvent) => {
+      const dxPct = (((ev.clientX - startX) / scaleRef.current) / el.frame.width) * 100
+      const left = Math.max(5, Math.min(pairPct - 5, orig[leftCol]! + dxPct))
+      const widths = [...orig]
+      widths[leftCol] = Math.round(left * 100) / 100
+      widths[leftCol + 1] = Math.round((pairPct - left) * 100) / 100
+      g.widths = widths
+      g.resized = true
+      setGesture({ ...g })
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      if (g.resized) dispatch({ type: 'APPLY_DOC', doc: setColWidths(docAtStart, g.slideId, g.id, g.widths) })
+      setGesture(null)
+    }
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      setGesture(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }
+
   const onElementPointerDown = (e: ReactPointerEvent, id: string) => {
     e.stopPropagation()
     // 텍스트 편집 중이면 첫 클릭은 편집 종료(blur 커밋)만 — preventDefault를 하면 blur가 막힌다
@@ -297,12 +452,12 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
                 width={doc.slideWidth}
                 height={doc.slideHeight}
                 themeVars={themeVars}
-                interaction={{ selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit }}
+                interaction={{ selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit, tableFor }}
               />
               <SelectionOverlay
                 slide={previewSlide}
                 selectedIds={selectedIds}
-                guides={gesture && gesture.kind !== 'rotate' ? gesture.guides : []}
+                guides={gesture && (gesture.kind === 'move' || gesture.kind === 'resize') ? gesture.guides : []}
                 resize={
                   singleSelected && editingTextId !== singleSelected.id
                     ? { elementId: singleSelected.id, onHandlePointerDown: beginResize, onRotatePointerDown: beginRotate }

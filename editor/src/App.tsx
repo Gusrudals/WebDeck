@@ -23,13 +23,26 @@ import { Toolbar } from './panels/Toolbar.tsx'
 import { editorReducer, initialEditorState, isDirty } from './state/store.ts'
 import { useShortcuts } from './hooks/useShortcuts.ts'
 
+export interface TableSel {
+  elementId: string
+  anchor: [number, number]
+  extent: [number, number]
+}
+
 export function App() {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState)
   const [docFile, setDocFile] = useState<{ seq: number; file: DocModeFile } | null>(null)
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(listCustomTemplates)
+  const [tableSel, setTableSel] = useState<TableSel | null>(null)
   const docSeqRef = useRef(0)
   const idGenRef = useRef(createIdGen('n'))
   useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs, docFile === null)
+
+  useEffect(() => {
+    // 선택된 요소가 바뀌면 표 선택을 해제 — 단, 같은 표가 여전히 단일 선택 상태면 유지한다
+    // (범위 선택 중 다른 액션이 selectedIds를 동일 값으로 재설정해도 표 셀 범위가 날아가지 않게)
+    setTableSel((sel) => (sel && state.selectedIds.length === 1 && state.selectedIds[0] === sel.elementId ? sel : null))
+  }, [state.selectedIds, state.currentSlideIndex, state.doc === null])
 
   useEffect(() => {
     // 문서 모드에서는 DocumentMode가 자체 beforeunload를 관리한다 — 스테일 덱 dirty로 경고하지 않는다
@@ -268,6 +281,8 @@ export function App() {
           selectedIds={state.selectedIds}
           editingTextId={state.editingTextId}
           dispatch={dispatch}
+          tableSel={tableSel}
+          setTableSel={setTableSel}
         />
       ) : (
         <StartScreen
