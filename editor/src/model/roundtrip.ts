@@ -2,16 +2,24 @@ import { parseWebdeck } from './parse.ts'
 import { serializeWebdeck } from './serialize.ts'
 import type { DeckDoc } from './types.ts'
 
-/** id는 세션 내부 값이므로 비교에서 제외. 텍스트 html은 trim 정규화(파서가 trim하므로) */
+/** id는 세션 내부 값이므로 비교에서 제외. 텍스트/표 셀 html은 trim 정규화(파서가 trim하므로) */
 function normalize(doc: DeckDoc): DeckDoc {
   return {
     ...doc,
     slides: doc.slides.map((s) => ({
       ...s,
       id: '',
-      elements: s.elements.map((el) =>
-        el.type === 'text' ? { ...el, id: '', html: el.html.trim() } : { ...el, id: '' },
-      ),
+      elements: s.elements.map((el) => {
+        if (el.type === 'text') return { ...el, id: '', html: el.html.trim() }
+        if (el.type === 'table') {
+          return {
+            ...el,
+            id: '',
+            rows: el.rows.map((row) => row.map((cell) => ({ ...cell, html: cell.html.trim() }))),
+          }
+        }
+        return { ...el, id: '' }
+      }),
     })),
   }
 }

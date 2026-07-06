@@ -66,3 +66,10 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - 회전 제스처 DRAG_THRESHOLD 부재·회전 핸들 키보드 접근성
 - fill="context-stroke" 지원 브라우저가 충분해지면 marker 색 처리를 표준 방식으로 단순화 검토
 - 세션 내 삽입 화살표의 marker id는 저장→재열기 시 1회 재번호(wd-N 컴팩트화) — 기능·왕복 무영향, diff 노이즈만 (최종 리뷰 기록)
+
+## Plan 9b 이월 (최종 리뷰에서 백로그 판정)
+
+- 열 추가가 헤더 행(th)을 지날 때 새 셀이 항상 td — 행의 헤더성 상속 검토 (tableOps insertCol)
+- covered 셀 스테일 선택에서 헤더/배경/정렬 클릭 시 무변경 1 APPLY_DOC(빈 undo 스텝) — toggleHeaderCells/setCellsStyle에 변경 감지 no-op 가드 검토
+- el-table 구조 위치(래퍼 직하·tr 사이)의 HTML 주석은 정준 재생성으로 보존되지 않음(셀 내부는 보존) — 필요 시 ai-guide에 한 줄 명시
+- Safari/Firefox contentEditable 붙여넣기 경로의 셀 공백 처리 미검증 (Chrome은 새니타이저가 정규화 — F1 수정으로 오탐은 원천 봉쇄됨)

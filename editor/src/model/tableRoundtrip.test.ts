@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { parseWebdeck } from './parse.ts'
 import { checkRoundTrip } from './roundtrip.ts'
 import { serializeWebdeck } from './serialize.ts'
+import { setCellHtml } from './tableOps.ts'
 
 const WRAP = (inner: string) => `<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
@@ -69,5 +70,14 @@ describe('el-table 왕복', () => {
     expect(doc.slides[0]!.elements[0]!.type).toBe('opaque')
     expect(serializeWebdeck(doc)).toContain('stray text')
     expect(checkRoundTrip(doc)).toBeNull()
+  })
+
+  test('셀 html 앞뒤에 공백만 있어도 통과한다 (trim 정규화 — 최종 리뷰 F1)', () => {
+    const doc = parseWebdeck(TABLE('<tbody><tr><td>x</td><td>y</td></tr></tbody>'))
+    const el = doc.slides[0]!.elements[0]!
+    expect(el.type).toBe('table')
+    if (el.type !== 'table') return
+    const d = setCellHtml(doc, doc.slides[0]!.id, el.id, 0, 0, '  <p>abc</p>\n')
+    expect(checkRoundTrip(d)).toBeNull()
   })
 })
