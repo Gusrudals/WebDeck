@@ -379,7 +379,12 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     const g: ColResizeGesture = { kind: 'colresize', slideId: slide.id, id: el.id, widths: orig, resized: false }
     const onMove = (ev: PointerEvent) => {
       const dxPct = (((ev.clientX - startX) / scaleRef.current) / el.frame.width) * 100
-      const left = Math.max(5, Math.min(pairPct - 5, orig[leftCol]! + dxPct))
+      // 브리프 보정(Task 10 리뷰 이월): 이웃 두 열의 폭 합(pairPct)이 10% 미만이면 고정 5%
+      // 클램프의 하한(5)이 상한(pairPct-5)보다 커져 좌측이 항상 5로 강제되고 우측이 음수가
+      // 된다(예: pairPct=4.444 → 우측 -0.556). lo를 pairPct의 절반으로도 캡해 두 열이 항상
+      // 음이 아니게(좁은 쌍은 반씩 나눠) 만든다.
+      const lo = Math.min(5, pairPct / 2)
+      const left = Math.max(lo, Math.min(pairPct - lo, orig[leftCol]! + dxPct))
       const widths = [...orig]
       widths[leftCol] = Math.round(left * 100) / 100
       widths[leftCol + 1] = Math.round((pairPct - left) * 100) / 100
