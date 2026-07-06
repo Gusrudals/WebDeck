@@ -35,8 +35,8 @@ export function SlidePanel({
     const onOutside = (e: PointerEvent) => {
       if (layoutRef.current && !layoutRef.current.contains(e.target as Node)) setLayoutOpen(false)
     }
-    window.addEventListener('pointerdown', onOutside)
-    return () => window.removeEventListener('pointerdown', onOutside)
+    window.addEventListener('pointerdown', onOutside, true) // 캡처 — 요소 제스처의 stopPropagation에도 닫힘
+    return () => window.removeEventListener('pointerdown', onOutside, true)
   }, [layoutOpen])
   return (
     <nav aria-label="슬라이드 목록">

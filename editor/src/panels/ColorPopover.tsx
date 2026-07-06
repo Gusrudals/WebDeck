@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FocusEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { anchoredPopoverStyle } from './popover.ts'
 
 export const PALETTE = [
   '#000000', '#1f2937', '#6b7280', '#d1d5db', '#ffffff', '#1a56db',
@@ -29,10 +30,12 @@ export interface ColorPopoverProps {
   showHex?: boolean
   clearLabel?: string
   onClear?: () => void
+  /** 스크롤 컨테이너(툴바 등) 안에서 클리핑을 피해야 할 때 — 팝오버를 fixed로 앵커에 고정 */
+  fixedToAnchor?: boolean
 }
 
 export function ColorPopover({
-  label, value, disabled, onPick, textTool, onActivate, onHexBlur, showHex = true, clearLabel, onClear,
+  label, value, disabled, onPick, textTool, onActivate, onHexBlur, showHex = true, clearLabel, onClear, fixedToAnchor,
 }: ColorPopoverProps) {
   const [open, setOpen] = useState(false)
   const [hexDraft, setHexDraft] = useState('')
@@ -44,8 +47,8 @@ export function ColorPopover({
     const onOutside = (e: globalThis.PointerEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
     }
-    window.addEventListener('pointerdown', onOutside)
-    return () => window.removeEventListener('pointerdown', onOutside)
+    window.addEventListener('pointerdown', onOutside, true) // 캡처 — 요소 제스처의 stopPropagation에도 닫힘
+    return () => window.removeEventListener('pointerdown', onOutside, true)
   }, [open])
 
   const pick = (color: string) => {
@@ -79,7 +82,12 @@ export function ColorPopover({
         {label}
       </button>
       {open && (
-        <div className="color-popover" role="dialog" aria-label={`${label} 선택`}>
+        <div
+          className="color-popover"
+          role="dialog"
+          aria-label={`${label} 선택`}
+          style={fixedToAnchor ? anchoredPopoverStyle(rootRef.current) : undefined}
+        >
           <div className="color-grid">
             {PALETTE.map((c) => (
               <button

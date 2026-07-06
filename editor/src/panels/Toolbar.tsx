@@ -23,6 +23,7 @@ import {
   focusEditable, restoreSelection, saveSelection, setLineHeight,
 } from './format.ts'
 import { ColorPopover } from './ColorPopover.tsx'
+import { anchoredPopoverStyle } from './popover.ts'
 
 const keepFocus = (e: ReactPointerEvent) => e.preventDefault()
 
@@ -67,8 +68,8 @@ export function Toolbar({
     const onOutside = (e: PointerEvent) => {
       if (shapeRef.current && !shapeRef.current.contains(e.target as Node)) setShapeOpen(false)
     }
-    window.addEventListener('pointerdown', onOutside)
-    return () => window.removeEventListener('pointerdown', onOutside)
+    window.addEventListener('pointerdown', onOutside, true) // 캡처 — 요소 제스처의 stopPropagation에도 닫힘
+    return () => window.removeEventListener('pointerdown', onOutside, true)
   }, [shapeOpen])
   const [tableOpen, setTableOpen] = useState(false)
   const [tableHover, setTableHover] = useState<[number, number] | null>(null)
@@ -78,8 +79,8 @@ export function Toolbar({
     const onOutside = (e: PointerEvent) => {
       if (tableRef.current && !tableRef.current.contains(e.target as Node)) setTableOpen(false)
     }
-    window.addEventListener('pointerdown', onOutside)
-    return () => window.removeEventListener('pointerdown', onOutside)
+    window.addEventListener('pointerdown', onOutside, true) // 캡처 — 요소 제스처의 stopPropagation에도 닫힘
+    return () => window.removeEventListener('pointerdown', onOutside, true)
   }, [tableOpen])
 
   const SHAPE_MENU: { kind: ShapeKind; label: string }[] = [
@@ -208,7 +209,7 @@ export function Toolbar({
         <div className="layout-popover-root" ref={shapeRef}>
           <button type="button" disabled={!hasDoc} onClick={() => setShapeOpen((o) => !o)}>도형</button>
           {shapeOpen && (
-            <div className="layout-popover" role="menu">
+            <div className="layout-popover" role="menu" style={anchoredPopoverStyle(shapeRef.current)}>
               {SHAPE_MENU.map((s) => (
                 <button key={s.kind} type="button" role="menuitem" onClick={() => { setShapeOpen(false); insertShapeKind(s.kind) }}>
                   {s.label}
@@ -221,7 +222,7 @@ export function Toolbar({
         <div className="layout-popover-root" ref={tableRef}>
           <button type="button" disabled={!hasDoc} onClick={() => setTableOpen((o) => !o)}>표</button>
           {tableOpen && (
-            <div className="layout-popover table-picker" role="dialog" aria-label="표 크기 선택">
+            <div className="layout-popover table-picker" role="dialog" aria-label="표 크기 선택" style={anchoredPopoverStyle(tableRef.current)}>
               <div className="table-picker-grid" onPointerLeave={() => setTableHover(null)}>
                 {Array.from({ length: 64 }, (_, i) => {
                   const r = Math.floor(i / 8)
@@ -318,6 +319,7 @@ export function Toolbar({
           label="글자색"
           disabled={!editing}
           textTool
+          fixedToAnchor
           onActivate={saveSelection}
           onHexBlur={commitEditingFromTool}
           onPick={(c) => {

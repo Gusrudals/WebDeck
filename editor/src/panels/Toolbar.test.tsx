@@ -321,3 +321,28 @@ test('이미 같은 세로 정렬이면 dispatch하지 않는다', () => {
   fireEvent.click(getByRole('button', { name: '텍스트 중간' }))
   expect(dispatch).not.toHaveBeenCalled()
 })
+
+test('도형 팝오버는 fixed로 렌더된다 (툴바 overflow 클리핑 탈출)', () => {
+  const { getByRole, container } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  const pop = container.querySelector('.layout-popover') as HTMLElement
+  expect(pop.style.position).toBe('fixed')
+})
+
+test('표 피커도 fixed로 렌더된다 (툴바 overflow 클리핑 탈출)', () => {
+  const { getByRole, container } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '표' }))
+  const pop = container.querySelector('.table-picker') as HTMLElement
+  expect(pop.style.position).toBe('fixed')
+})
+
+test('stopPropagation하는 외부 요소를 눌러도 도형 팝오버가 닫힌다 (캡처 단계 닫힘)', () => {
+  const { getByRole, container } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  const outside = document.createElement('div')
+  outside.addEventListener('pointerdown', (e) => e.stopPropagation())
+  document.body.appendChild(outside)
+  fireEvent.pointerDown(outside)
+  document.body.removeChild(outside)
+  expect(container.querySelector('.layout-popover')).toBeNull()
+})

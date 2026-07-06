@@ -73,3 +73,4 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - covered 셀 스테일 선택에서 헤더/배경/정렬 클릭 시 무변경 1 APPLY_DOC(빈 undo 스텝) — toggleHeaderCells/setCellsStyle에 변경 감지 no-op 가드 검토
 - el-table 구조 위치(래퍼 직하·tr 사이)의 HTML 주석은 정준 재생성으로 보존되지 않음(셀 내부는 보존) — 필요 시 ai-guide에 한 줄 명시
 - Safari/Firefox contentEditable 붙여넣기 경로의 셀 공백 처리 미검증 (Chrome은 새니타이저가 정규화 — F1 수정으로 오탐은 원천 봉쇄됨)
+- 사이드/속성 패널 내부 팝오버(레이아웃·색)는 absolute 유지 — 세로 스크롤 패널이라 접근 가능(수용). 패널 바닥 근처에서 어색하면 fixedToAnchor 적용 검토

@@ -80,3 +80,26 @@ test('textTool 모드에서 hex 입력에 data-text-tool이 붙는다', () => {
   fireEvent.click(trigger)
   expect(getByLabelText('글자색 hex').getAttribute('data-text-tool')).toBe('1')
 })
+
+test('fixedToAnchor면 팝오버가 fixed로 렌더된다 (스크롤 컨테이너 클리핑 탈출)', () => {
+  const { getByRole } = render(<ColorPopover label="글자색" onPick={vi.fn()} fixedToAnchor />)
+  fireEvent.click(getByRole('button', { name: '글자색' }))
+  expect((getByRole('dialog') as HTMLElement).style.position).toBe('fixed')
+})
+
+test('fixedToAnchor 없으면 기존대로 인라인 position이 없다', () => {
+  const { getByRole } = render(<ColorPopover label="글자색" onPick={vi.fn()} />)
+  fireEvent.click(getByRole('button', { name: '글자색' }))
+  expect((getByRole('dialog') as HTMLElement).style.position).toBe('')
+})
+
+test('stopPropagation하는 외부 요소를 눌러도 색 팝오버가 닫힌다 (캡처 단계 닫힘)', () => {
+  const { getByRole, queryByRole } = render(<ColorPopover label="채우기 색" onPick={vi.fn()} />)
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  const outside = document.createElement('div')
+  outside.addEventListener('pointerdown', (e) => e.stopPropagation())
+  document.body.appendChild(outside)
+  fireEvent.pointerDown(outside)
+  document.body.removeChild(outside)
+  expect(queryByRole('dialog')).toBeNull()
+})
