@@ -2,9 +2,11 @@ import { useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import type { TableSel } from '../App.tsx'
 import { MIN_SIZE } from '../canvas/geometry.ts'
+import { createIdGen } from '../model/id.ts'
 import { setElementFrame, setElementRotation, setElementStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
 import { normalizeAngle } from '../model/rotation.ts'
 import { isLinear } from '../model/shapeSvg.ts'
+import { convertibleOpaqueTableCount, convertOpaqueTables } from '../model/tableOps.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
 import type { Frame, TableElement } from '../model/types.ts'
@@ -39,6 +41,8 @@ export function PropertiesPanel({
   const [notesDraft, setNotesDraft] = useState<{ slideId: string; text: string } | null>(null)
   /** Escape 취소 플래그 — blur 핸들러가 취소를 커밋으로 오인하지 않게 ref로 전달 */
   const notesEscRef = useRef(false)
+  /** opaque→표 변환 시 부여할 id 생성기 — App의 idGen과 별개(플랜 지정) */
+  const convertIdGen = useRef(createIdGen('tc'))
   const slide = doc?.slides[currentSlideIndex] ?? null
   if (!doc || !slide) return <aside className="props" aria-label="속성" />
   const selectedKnown = slide.elements.filter(isKnownElement).filter((el) => selectedIds.includes(el.id))
@@ -90,6 +94,23 @@ export function PropertiesPanel({
             }}
           />
         </label>
+        {(() => {
+          const n = convertibleOpaqueTableCount(slide)
+          if (n === 0) return null
+          return (
+            <div className="btn-row">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = convertOpaqueTables(doc, slide.id, convertIdGen.current)
+                  if (next !== doc) dispatch({ type: 'APPLY_DOC', doc: next })
+                }}
+              >
+                편집 불가 표 {n}개를 표 요소로 변환
+              </button>
+            </div>
+          )
+        })()}
       </aside>
     )
   }

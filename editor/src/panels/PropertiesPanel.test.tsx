@@ -385,6 +385,25 @@ test('노트를 같은 내용으로 blur하면 디스패치하지 않는다', ()
   expect(dispatch).not.toHaveBeenCalled()
 })
 
+test('슬라이드 모드 — 변환 가능한 opaque 표가 있으면 변환 버튼이 보이고 1 APPLY_DOC', () => {
+  const withOpaque = parseWebdeck(`<!DOCTYPE html>
+<html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el" style="left:96px; top:200px; width:600px; height:200px;"><table><tbody><tr><td>a</td><td>b</td></tr></tbody></table></div></section>
+</main></body></html>`)
+  const { dispatch, getByRole } = renderPanel({ doc: withOpaque })
+  const btn = getByRole('button', { name: '편집 불가 표 1개를 표 요소로 변환' })
+  fireEvent.click(btn)
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  expect((applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!.type).toBe('table')
+})
+
+test('변환 가능한 표가 없으면 버튼 미표시', () => {
+  const { queryByRole } = renderPanel()
+  expect(queryByRole('button', { name: /표 요소로 변환/ })).toBeNull()
+})
+
 test('비정상 opacity 값은 NaN 없이 0%로 표시된다', () => {
   const DOC_BAD = parseWebdeck(`<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
