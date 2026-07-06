@@ -293,7 +293,7 @@ export function App() {
           onDeleteTemplate={handleDeleteTemplate}
         />
       )}
-      <PropertiesPanel state={state} dispatch={dispatch} />
+      <PropertiesPanel state={state} dispatch={dispatch} tableSel={tableSel} />
     </div>
   )
 }

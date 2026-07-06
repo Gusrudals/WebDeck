@@ -1,14 +1,16 @@
 import { useRef, useState } from 'react'
 import type { Dispatch } from 'react'
+import type { TableSel } from '../App.tsx'
 import { MIN_SIZE } from '../canvas/geometry.ts'
 import { setElementFrame, setElementRotation, setElementStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
 import { normalizeAngle } from '../model/rotation.ts'
 import { isLinear } from '../model/shapeSvg.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
-import type { Frame } from '../model/types.ts'
+import type { Frame, TableElement } from '../model/types.ts'
 import { ColorPopover } from './ColorPopover.tsx'
 import { SlideBgSection } from './SlideBgSection.tsx'
+import { TableSection } from './TableSection.tsx'
 import { ThemeSection } from './ThemeSection.tsx'
 
 const BORDER_PATTERN = /^(\d+)px (solid|dashed) (\S+)$/
@@ -23,7 +25,13 @@ function parseBorder(value: string | undefined): { width: number; style: 'solid'
   return { width: Number(m[1]), style: m[2] as 'solid' | 'dashed', color: m[3]! }
 }
 
-export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispatch: Dispatch<EditorAction> }) {
+export function PropertiesPanel({
+  state, dispatch, tableSel,
+}: {
+  state: EditorState
+  dispatch: Dispatch<EditorAction>
+  tableSel?: TableSel | null
+}) {
   const { doc, currentSlideIndex, selectedIds } = state
   /** 투명도 슬라이더 조작 중 임시값 — pointerup/blur에서 1회 커밋 */
   const [opacityDraft, setOpacityDraft] = useState<string | null>(null)
@@ -142,6 +150,9 @@ export function PropertiesPanel({ state, dispatch }: { state: EditorState; dispa
           </section>
         )
       })()}
+      {selectedKnown.length === 1 && selectedKnown[0]!.type === 'table' && (
+        <TableSection doc={doc} slide={slide} el={selectedKnown[0]! as TableElement} sel={tableSel ?? null} dispatch={dispatch} />
+      )}
       {first && (
         <section aria-label="스타일">
           <div className="prop-row">
