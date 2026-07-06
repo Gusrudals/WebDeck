@@ -113,6 +113,30 @@ test('선 선택은 320×8 선을 삽입한다', () => {
   expect(added.frame.height).toBe(8)
 })
 
+test('표 버튼은 8×8 그리드 피커를 열고 hover 라벨을 보여준다', () => {
+  const { getByRole, container } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '표' }))
+  const cells = container.querySelectorAll('.table-picker-cell')
+  expect(cells).toHaveLength(64)
+  fireEvent.pointerEnter(cells[10]!)  // r=1, c=2 → 2×3
+  expect(getByRole('dialog', { name: '표 크기 선택' }).textContent).toContain('2 × 3')
+})
+
+test('그리드 클릭은 해당 크기 표를 1 APPLY_DOC으로 삽입한다', () => {
+  const { dispatch, getByRole, container } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '표' }))
+  fireEvent.click(container.querySelectorAll('.table-picker-cell')[9]!)  // r=1,c=1 → 2×2
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const doc = applies[0]![0].doc as DeckDoc
+  const added = doc.slides[0]!.elements.at(-1)!
+  expect(added.type).toBe('table')
+  if (added.type !== 'table') return
+  expect(added.rows).toHaveLength(2)
+  expect(added.colWidths).toHaveLength(2)
+  expect(added.frame.height).toBe(80)
+})
+
 test('편집 중이 아니면 서식 버튼은 disabled다', () => {
   const { getByRole } = renderToolbar({ selectedIds: [EL_TEXT] })
   expect((getByRole('button', { name: '굵게' }) as HTMLButtonElement).disabled).toBe(true)

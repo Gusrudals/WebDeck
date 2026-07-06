@@ -131,6 +131,15 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .layout-popover button { font: inherit; font-size: 13px; text-align: left; padding: 6px 10px; border: none; background: none; border-radius: 4px; cursor: pointer; }
 .layout-popover button:hover { background: #f3f4f6; }
 
+/* 표 크기 피커 — 셀 선택자는 `.layout-popover button`/`:hover`(도형 팝오버 공용 규칙)보다
+   특이도가 높아야 padding/배경이 덮어써지지 않는다(둘 다 .layout-popover 하위 button이므로 충돌). */
+.table-picker { width: 184px; }
+.table-picker-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.table-picker .table-picker-cell { width: 18px; height: 18px; padding: 0; border: 1px solid #d1d5db; border-radius: 2px; background: #fff; cursor: pointer; }
+.table-picker .table-picker-cell.active,
+.table-picker .table-picker-cell:hover { background: var(--wd-accent, #e8f0fe); border-color: var(--wd-primary, #1a56db); }
+.table-picker-label { margin-top: 6px; font-size: 12px; color: #6b7280; text-align: center; }
+
 /* 표 편집 */
 .el-table table { table-layout: fixed; }
 .el-table th, .el-table td { overflow-wrap: break-word; vertical-align: top; }

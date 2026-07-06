@@ -14,6 +14,7 @@ import {
   setTextHtml,
 } from '../model/ops.ts'
 import type { ZDirection } from '../model/ops.ts'
+import { createTable } from '../model/tableOps.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { ShapeKind } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
@@ -69,6 +70,17 @@ export function Toolbar({
     window.addEventListener('pointerdown', onOutside)
     return () => window.removeEventListener('pointerdown', onOutside)
   }, [shapeOpen])
+  const [tableOpen, setTableOpen] = useState(false)
+  const [tableHover, setTableHover] = useState<[number, number] | null>(null)
+  const tableRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!tableOpen) return
+    const onOutside = (e: PointerEvent) => {
+      if (tableRef.current && !tableRef.current.contains(e.target as Node)) setTableOpen(false)
+    }
+    window.addEventListener('pointerdown', onOutside)
+    return () => window.removeEventListener('pointerdown', onOutside)
+  }, [tableOpen])
 
   const SHAPE_MENU: { kind: ShapeKind; label: string }[] = [
     { kind: 'rect', label: '사각형' },
@@ -112,6 +124,12 @@ export function Toolbar({
       ? { left: 480, top: 356, width: 320, height: 8 }
       : { left: 520, top: 280, width: 240, height: 160 }
     const el = createShape(idGen, kind, frame)
+    dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
+  }
+
+  const insertTable = (rows: number, cols: number) => {
+    if (!doc || !slide) return
+    const el = createTable(idGen, rows, cols, { left: 280, top: 200, width: 720, height: 40 * rows })
     dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
   }
 
@@ -200,6 +218,37 @@ export function Toolbar({
           )}
         </div>
         <button type="button" disabled={!hasDoc} onClick={insertImage}>이미지</button>
+        <div className="layout-popover-root" ref={tableRef}>
+          <button type="button" disabled={!hasDoc} onClick={() => setTableOpen((o) => !o)}>표</button>
+          {tableOpen && (
+            <div className="layout-popover table-picker" role="dialog" aria-label="표 크기 선택">
+              <div className="table-picker-grid" onPointerLeave={() => setTableHover(null)}>
+                {Array.from({ length: 64 }, (_, i) => {
+                  const r = Math.floor(i / 8)
+                  const c = i % 8
+                  const active = tableHover !== null && r <= tableHover[0] && c <= tableHover[1]
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className={active ? 'table-picker-cell active' : 'table-picker-cell'}
+                      aria-label={`${r + 1} × ${c + 1} 표`}
+                      onPointerEnter={() => setTableHover([r, c])}
+                      onClick={() => {
+                        setTableOpen(false)
+                        setTableHover(null)
+                        insertTable(r + 1, c + 1)
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <div className="table-picker-label">
+                {tableHover ? `${tableHover[0] + 1} × ${tableHover[1] + 1}` : '크기 선택'}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <div className="group" aria-label="텍스트 서식">
         <button type="button" aria-label="굵게" title="굵게" disabled={!editing} onPointerDown={keepFocus} onClick={() => execFormat('bold')}><b>가</b></button>
