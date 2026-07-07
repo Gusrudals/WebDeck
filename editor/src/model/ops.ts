@@ -1,5 +1,5 @@
 import { normalizeAngle } from './rotation.ts'
-import { isLinear, isPath, isStroke, lineDefaults } from './shapeSvg.ts'
+import { isPath, isStroke, lineDefaults } from './shapeSvg.ts'
 import type { LineStyle } from './shapeSvg.ts'
 import type { DeckDoc, Frame, ImageElement, KnownElement, Point, ShapeElement, ShapeKind, Slide, SlideElement, TextElement } from './types.ts'
 import { isKnownElement } from './types.ts'
@@ -214,10 +214,10 @@ export function createImageElement(idGen: () => string, frame: Frame, src: strin
   return { type: 'image', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], src, alt, imgStyle: 'width:100%; height:100%;' }
 }
 
-/** 선 서식 패치 — line/arrow 외에는 무변경. 호출부가 값 비교로 no-op dispatch를 막는다(회전 관례) */
+/** 선 서식 패치 — stroke 계열(line/arrow/elbow/curve) 외에는 무변경. 호출부가 값 비교로 no-op dispatch를 막는다(회전 관례) */
 export function setShapeLineStyle(doc: DeckDoc, slideId: string, elementId: string, patch: Partial<LineStyle>): DeckDoc {
   return mapKnownElement(doc, slideId, elementId, (el) =>
-    el.type === 'shape' && isLinear(el.shape) ? { ...el, ...patch } : el,
+    el.type === 'shape' && isStroke(el.shape) ? { ...el, ...patch } : el,
   )
 }
 

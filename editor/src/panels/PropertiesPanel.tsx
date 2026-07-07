@@ -5,7 +5,7 @@ import { MIN_SIZE } from '../canvas/geometry.ts'
 import { createIdGen } from '../model/id.ts'
 import { setElementFrame, setElementRotation, setElementStyle, setShapeLineStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
 import { normalizeAngle } from '../model/rotation.ts'
-import { isLinear } from '../model/shapeSvg.ts'
+import { isStroke } from '../model/shapeSvg.ts'
 import type { LineStyle } from '../model/shapeSvg.ts'
 import { convertibleOpaqueTableCount, convertOpaqueTables } from '../model/tableOps.ts'
 import { isKnownElement } from '../model/types.ts'
@@ -133,9 +133,9 @@ export function PropertiesPanel({
     applyStyle({ opacity: t === 0 ? null : String(Math.round((1 - t / 100) * 100) / 100) })
   }
   const border = first ? parseBorder(first.extraStyle['border']) : null
-  /** 전부 line/arrow 선택이면 채우기를 색(color)에 매핑하고 테두리·그림자를 숨긴다 — 혼합 선택은 기존 background 동작 유지 */
-  const allLinear = selectedKnown.length > 0 && selectedKnown.every((el) => el.type === 'shape' && isLinear(el.shape))
-  const fillKey = allLinear ? 'color' : 'background'
+  /** 전부 stroke 계열(line/arrow/elbow/curve) 선택이면 채우기를 색(color)에 매핑하고 테두리·그림자를 숨긴다 — 혼합 선택은 기존 background 동작 유지 */
+  const allStroke = selectedKnown.length > 0 && selectedKnown.every((el) => el.type === 'shape' && isStroke(el.shape))
+  const fillKey = allStroke ? 'color' : 'background'
 
   return (
     <aside className="props" aria-label="속성">
@@ -175,7 +175,7 @@ export function PropertiesPanel({
       {selectedKnown.length === 1 && selectedKnown[0]!.type === 'table' && (
         <TableSection doc={doc} slide={slide} el={selectedKnown[0]! as TableElement} sel={tableSel ?? null} dispatch={dispatch} />
       )}
-      {allLinear && (() => {
+      {allStroke && (() => {
         const shapes = selectedKnown.filter((el): el is ShapeElement => el.type === 'shape')
         const firstShape = shapes[0]!
         const applyLine = (patch: Partial<LineStyle>) => {
@@ -230,7 +230,7 @@ export function PropertiesPanel({
               onClear={() => applyStyle({ [fillKey]: null })}
             />
           </div>
-          {!allLinear && (
+          {!allStroke && (
             <>
               <label className="prop-row">
                 테두리

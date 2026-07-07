@@ -138,14 +138,15 @@ function validateSlide(slide, num, ctx) {
 
     if (type === 'el-image') validateImage(el, label, ctx)
     if (type === 'el-shape') {
-      const SHAPE_KINDS = ['rect', 'ellipse', 'rounded', 'line', 'arrow']
+      const SHAPE_KINDS = ['rect', 'ellipse', 'rounded', 'line', 'arrow', 'elbow', 'curve']
+      const STROKE_KINDS = ['line', 'arrow', 'elbow', 'curve']
       const kind = el.getAttribute('data-shape')
       if (!SHAPE_KINDS.includes(kind)) {
-        errors.push(`${label}: el-shape의 data-shape는 rect/ellipse/rounded/line/arrow만 지원합니다 (v1.1)`)
-      } else if (kind === 'line' || kind === 'arrow') {
+        errors.push(`${label}: el-shape의 data-shape는 rect/ellipse/rounded/line/arrow/elbow/curve만 지원합니다 (v1.1)`)
+      } else if (STROKE_KINDS.includes(kind)) {
         const kids = el.childNodes.filter((n) => n.nodeType === 1)
         if (kids.length > 1 || (kids.length === 1 && kids[0].rawTagName.toLowerCase() !== 'svg')) {
-          errors.push(`${label}: line/arrow 도형의 자식은 svg 1개만 허용됩니다`)
+          errors.push(`${label}: ${kind} 도형의 자식은 svg 1개만 허용됩니다`)
         }
         const w = el.getAttribute('data-stroke-width')
         if (w != null && !/^[1-9][0-9]*$/.test(w)) {
@@ -159,6 +160,35 @@ function validateSlide(slide, num, ctx) {
           const v = el.getAttribute(name)
           if (v != null && v !== '0' && v !== '1') {
             errors.push(`${label}: ${name}는 0 또는 1이어야 합니다`)
+          }
+        }
+        if (kind === 'elbow' || kind === 'curve') {
+          const raw = el.getAttribute('data-points')
+          if (raw == null || raw.trim() === '') {
+            errors.push(`${label}: ${kind}에는 data-points가 필요합니다`)
+          } else {
+            const pts = []
+            let bad = false
+            for (const pair of raw.trim().split(/\s+/)) {
+              const xy = pair.split(',')
+              if (xy.length !== 2 || !Number.isFinite(Number(xy[0])) || !Number.isFinite(Number(xy[1]))) {
+                bad = true
+                break
+              }
+              pts.push([Number(xy[0]), Number(xy[1])])
+            }
+            if (bad) {
+              errors.push(`${label}: data-points는 "x,y x,y ..." 형식의 유한한 숫자 쌍이어야 합니다`)
+            } else if (kind === 'curve' && pts.length !== 4) {
+              errors.push(`${label}: curve의 data-points는 정확히 4점이어야 합니다`)
+            } else if (kind === 'elbow' && pts.length < 2) {
+              errors.push(`${label}: elbow의 data-points는 점 2개 이상이어야 합니다`)
+            } else if (kind === 'elbow') {
+              const nonOrtho = pts.some((p, i) => i > 0 && p[0] !== pts[i - 1][0] && p[1] !== pts[i - 1][1])
+              if (nonOrtho) {
+                warnings.push(`${label}: elbow의 연속 점이 직교(수평/수직)가 아닙니다 — 에디터 세그먼트 편집이 제한됩니다`)
+              }
+            }
           }
         }
       }

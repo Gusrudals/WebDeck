@@ -102,6 +102,23 @@ describe('요소 커맨드', () => {
     expect((same.slides[0]!.elements.find((e) => e.id === 'wd-2') as ShapeElement).strokeWidth).toBe(2)
   })
 
+  test('setShapeLineStyle은 elbow/curve의 서식도 패치한다 (isStroke 가드 회귀)', () => {
+    const doc = fixture()
+    const gen = createIdGen('pt')
+    const elbow = createShape(gen, 'elbow', { left: 0, top: 0, width: 100, height: 100 })
+    const withElbow = addElement(doc, 'wd-1', elbow)
+    const next = setShapeLineStyle(withElbow, 'wd-1', elbow.id, { strokeWidth: 5, headEnd: true })
+    const el = next.slides[0]!.elements.find((e) => e.id === elbow.id) as ShapeElement
+    expect(el.strokeWidth).toBe(5)
+    expect(el.headEnd).toBe(true)
+
+    const curve = createShape(gen, 'curve', { left: 0, top: 0, width: 100, height: 100 })
+    const withCurve = addElement(doc, 'wd-1', curve)
+    const nextCurve = setShapeLineStyle(withCurve, 'wd-1', curve.id, { strokeDash: 'dashed' })
+    const curveEl = nextCurve.slides[0]!.elements.find((e) => e.id === curve.id) as ShapeElement
+    expect(curveEl.strokeDash).toBe('dashed')
+  })
+
   test('setShapePoints는 elbow/curve의 frame+points만 갱신한다', () => {
     const doc = fixture()
     const gen = createIdGen('el')

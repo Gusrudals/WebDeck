@@ -127,7 +127,7 @@ test('data-transition은 fade/push만 허용한다', () => {
   assert.deepStrictEqual(good.errors, [])
 })
 
-test('data-shape는 5종을 허용하고 그 외는 오류다', () => {
+test('data-shape는 7종을 허용하고 그 외는 오류다', () => {
   const wrap = (el) => `<!DOCTYPE html>
 <html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
 <body><main class="deck" data-slide-width="1280" data-slide-height="720">
@@ -136,6 +136,14 @@ test('data-shape는 5종을 허용하고 그 외는 오류다', () => {
     const r = validateWebdeck(wrap(`<div class="el el-shape" data-shape="${kind}" style="left:0px; top:0px; width:100px; height:50px;"></div>`))
     assert.deepStrictEqual(r.errors, [], kind)
   }
+  const elbow = validateWebdeck(
+    wrap('<div class="el el-shape" data-shape="elbow" data-points="0,0 100,0 100,50" style="left:0px; top:0px; width:100px; height:50px;"></div>'),
+  )
+  assert.deepStrictEqual(elbow.errors, [], 'elbow')
+  const curve = validateWebdeck(
+    wrap('<div class="el el-shape" data-shape="curve" data-points="0,50 33,0 66,0 100,50" style="left:0px; top:0px; width:100px; height:50px;"></div>'),
+  )
+  assert.deepStrictEqual(curve.errors, [], 'curve')
   const bad = validateWebdeck(wrap('<div class="el el-shape" data-shape="star" style="left:0px; top:0px; width:100px; height:50px;"></div>'))
   assert.ok(bad.errors.some((e) => e.includes('data-shape')))
 })
@@ -183,6 +191,61 @@ test('속성이 없으면 통과 (전부 선택 속성)', () => {
     ),
   )
   assert.deepStrictEqual(ok.errors, [])
+})
+
+test('elbow/curve: data-points 필수·형식·개수 오류', () => {
+  const noPoints = validateWebdeck(
+    wrapSlide('<div class="el el-shape" data-shape="elbow" style="left:0px; top:0px; width:100px; height:100px;"></div>'),
+  )
+  assert.ok(noPoints.errors.some((e) => e.includes('data-points가 필요합니다')))
+
+  const badCount = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="curve" data-points="0,0 1,1 2,2" style="left:0px; top:0px; width:100px; height:100px;"></div>',
+    ),
+  )
+  assert.ok(badCount.errors.some((e) => e.includes('curve의 data-points는 정확히 4점이어야 합니다')))
+
+  const badFormat = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="elbow" data-points="0,0 a,b" style="left:0px; top:0px; width:100px; height:100px;"></div>',
+    ),
+  )
+  assert.ok(badFormat.errors.some((e) => e.includes('유한한 숫자 쌍')))
+})
+
+test('elbow 비직교는 경고', () => {
+  const r = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="elbow" data-points="0,0 70,30" style="left:0px; top:0px; width:100px; height:100px;"></div>',
+    ),
+  )
+  assert.ok(r.warnings.some((w) => w.includes('직교(수평/수직)가 아닙니다')))
+  assert.deepStrictEqual(r.errors, [])
+})
+
+test('elbow의 선 서식 속성도 검증된다', () => {
+  const r = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="elbow" data-points="0,0 50,0 50,100" data-stroke-dash="wavy" style="left:0px; top:0px; width:100px; height:100px;"></div>',
+    ),
+  )
+  assert.ok(r.errors.some((e) => e.includes('data-stroke-dash는 dashed/dotted만 지원합니다')))
+})
+
+test('정상 elbow/curve 통과', () => {
+  const elbow = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="elbow" data-points="0,0 50,0 50,100 100,100" style="left:0px; top:0px; width:100px; height:100px;"></div>',
+    ),
+  )
+  assert.deepStrictEqual(elbow.errors, [])
+  const curve = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="curve" data-points="0,100 33.33,0 66.67,0 100,100" style="left:0px; top:0px; width:100px; height:100px;"></div>',
+    ),
+  )
+  assert.deepStrictEqual(curve.errors, [])
 })
 
 const tableEl = (inner) =>

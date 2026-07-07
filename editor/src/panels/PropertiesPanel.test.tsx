@@ -44,12 +44,32 @@ const DOC_ARROW = parseWebdeck(`<!DOCTYPE html>
 </section>
 </main></body></html>`)
 
+const DOC_ELBOW = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="elbow" data-points="0,0 50,0 50,100 100,100" style="left:10px; top:10px; width:100px; height:100px; color:#374151;"></div>
+</section>
+</main></body></html>`)
+
+const DOC_CURVE = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="curve" data-points="0,100 33.33,0 66.67,0 100,100" style="left:10px; top:10px; width:100px; height:100px; color:#374151;"></div>
+</section>
+</main></body></html>`)
+
 const EL_TEXT = DOC.slides[0]!.elements[0]!.id
 const EL_SHAPE = DOC.slides[0]!.elements[1]!.id
 const EL_BORDERED = DOC_STYLED.slides[0]!.elements[0]!.id
 const EL_CUSTOM_BORDER = DOC_STYLED.slides[0]!.elements[1]!.id
 const EL_LINE = DOC_LINE.slides[0]!.elements[0]!.id
 const EL_ARROW = DOC_ARROW.slides[0]!.elements[0]!.id
+const EL_ELBOW = DOC_ELBOW.slides[0]!.elements[0]!.id
+const EL_CURVE = DOC_CURVE.slides[0]!.elements[0]!.id
 
 function makeState(over: Partial<EditorState> = {}): EditorState {
   const opened = editorReducer(initialEditorState, {
@@ -80,6 +100,16 @@ function renderLinePanel(over: Partial<EditorState> = {}) {
 /** arrow 요소 단일 선택 픽스처 */
 function renderArrowPanel(over: Partial<EditorState> = {}) {
   return renderPanel({ doc: DOC_ARROW, selectedIds: [EL_ARROW], ...over })
+}
+
+/** elbow 요소 단일 선택 픽스처 */
+function renderElbowPanel(over: Partial<EditorState> = {}) {
+  return renderPanel({ doc: DOC_ELBOW, selectedIds: [EL_ELBOW], ...over })
+}
+
+/** curve 요소 단일 선택 픽스처 */
+function renderCurvePanel(over: Partial<EditorState> = {}) {
+  return renderPanel({ doc: DOC_CURVE, selectedIds: [EL_CURVE], ...over })
 }
 
 test('선택이 없으면 슬라이드 모드 — 배경색 입력을 보여준다', () => {
@@ -304,8 +334,33 @@ test('arrow의 끝 머리 토글: aria-pressed true → 클릭 → headEnd false
   expect(el.type === 'shape' && el.headEnd).toBe(false)
 })
 
+test('elbow 단일 선택도 선 섹션이 보이고 테두리는 숨는다', () => {
+  const { getByLabelText, queryByLabelText } = renderElbowPanel()
+  expect(getByLabelText('파선')).toBeTruthy()
+  expect(queryByLabelText('테두리 두께')).toBeNull()
+})
+
+test('curve 선택 시 채우기는 color에 매핑된다', () => {
+  const { dispatch, getByRole, getAllByRole } = renderCurvePanel()
+  fireEvent.click(getByRole('button', { name: '채우기 색' }))
+  fireEvent.click(getAllByRole('button', { name: /^색 #/ })[0]!)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  if (el.type === 'opaque') return
+  expect(el.extraStyle['color']).toBeTruthy()
+  expect(el.extraStyle['background']).toBeUndefined()
+})
+
+test('elbow의 파선 적용이 실제로 strokeDash를 바꾼다 (setShapeLineStyle 가드 회귀)', () => {
+  const { dispatch, getByLabelText } = renderElbowPanel()
+  fireEvent.click(getByLabelText('파선'))
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type === 'shape' && el.strokeDash).toBe('dashed')
+})
+
 test('혼합 선택(선+상자)이면 채우기는 기존대로 background를 패치한다', () => {
-  // 단일 line 선택(EL_LINE)은 allLinear=true 경로 — 대조용으로 line+rect를 함께 선택한 혼합 문서를 사용
+  // 단일 line 선택(EL_LINE)은 allStroke=true 경로 — 대조용으로 line+rect를 함께 선택한 혼합 문서를 사용
   const mixedDoc = parseWebdeck(`<!DOCTYPE html>
 <html lang="ko" data-webdeck-version="1">
 <head><meta charset="utf-8"><title>t</title></head>
