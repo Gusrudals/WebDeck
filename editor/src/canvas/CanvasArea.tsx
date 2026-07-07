@@ -577,7 +577,9 @@ export function CanvasArea({
                 selectedIds={selectedIds}
                 guides={gesture && (gesture.kind === 'move' || gesture.kind === 'resize') ? gesture.guides : []}
                 resize={
-                  singleSelected && editingTextId !== singleSelected.id
+                  // 그리기 모드 중엔 핸들도 비활성 — 핸들의 stopPropagation이 beginDraw 도달을
+                  // 막아 직전에 그려 자동 선택된 요소가 의도치 않게 리사이즈/회전되는 결함 방지
+                  !drawMode && singleSelected && editingTextId !== singleSelected.id
                     ? { elementId: singleSelected.id, onHandlePointerDown: beginResize, onRotatePointerDown: beginRotate }
                     : undefined
                 }

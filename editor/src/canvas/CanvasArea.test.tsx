@@ -689,4 +689,12 @@ describe('드래그 그리기 모드 (Plan 9c)', () => {
     expect(types).not.toContain('SELECT_ELEMENTS')
     fireEvent.pointerUp(window)
   })
+
+  test('모드 중에는 선택 요소의 리사이즈/회전 핸들이 렌더되지 않는다 (핸들이 그리기 시작점을 가로채는 결함 회귀)', () => {
+    // drawMode null이면 단일 선택에 핸들이 렌더된다(기존 '단일 선택이면 8개 리사이즈 핸들' 테스트와 대비).
+    // 모드 중엔 beginResize/beginRotate의 stopPropagation이 beginDraw 도달을 막아, 직전에 그려
+    // 자동 선택된 선의 핸들 위에서 새 그리기를 시작하면 기존 요소가 의도치 않게 리사이즈/회전된다.
+    const { container } = renderCanvas([EL_SHAPE], 'line')
+    expect(container.querySelectorAll('.handle')).toHaveLength(0)
+  })
 })
