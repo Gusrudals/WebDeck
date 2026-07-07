@@ -1,6 +1,7 @@
 import { createIdGen } from './id.ts'
 import { ROTATE_PATTERN, normalizeAngle } from './rotation.ts'
-import { isLinear } from './shapeSvg.ts'
+import { isLinear, lineDefaults } from './shapeSvg.ts'
+import type { LineStyle } from './shapeSvg.ts'
 import { parseInlineStyle } from './style.ts'
 import { parseTableMarkup } from './tableMarkup.ts'
 import type { DeckDoc, Frame, Slide, SlideElement } from './types.ts'
@@ -163,11 +164,30 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
       const hasChildren = el.children.length > 0
       const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
       if (hasChildren || hasText) return opaque()
+      return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...lineDefaults('line') }
     }
     // line/arrow는 내부 마크업을 무시한다 — 직렬화가 정준 SVG를 재생성 (스펙 §3)
-    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind }
+    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...readLineStyle(el, kind as 'line' | 'arrow', extraAttrs) }
   }
   return opaque()
+}
+
+const LINE_STYLE_ATTRS = ['data-stroke-width', 'data-stroke-dash', 'data-head-start', 'data-head-end']
+
+/** 선 서식 속성 승격 — 유효한 값만, 무효 값은 kind 기본값(관용, 스펙 §7). extraAttrs에서 소비한다 */
+function readLineStyle(el: Element, kind: 'line' | 'arrow', extraAttrs: Record<string, string>): LineStyle {
+  const d = lineDefaults(kind)
+  const w = el.getAttribute('data-stroke-width')
+  const dash = el.getAttribute('data-stroke-dash')
+  const hs = el.getAttribute('data-head-start')
+  const he = el.getAttribute('data-head-end')
+  for (const a of LINE_STYLE_ATTRS) delete extraAttrs[a]
+  return {
+    strokeWidth: w !== null && /^[1-9][0-9]*$/.test(w) ? Number(w) : d.strokeWidth,
+    strokeDash: dash === 'dashed' || dash === 'dotted' ? dash : d.strokeDash,
+    headStart: hs === '1' ? true : hs === '0' ? false : d.headStart,
+    headEnd: he === '1' ? true : he === '0' ? false : d.headEnd,
+  }
 }
 
 function readFrame(style: Record<string, string>): Frame | null {

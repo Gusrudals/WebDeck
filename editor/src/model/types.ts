@@ -33,9 +33,16 @@ export interface ImageElement extends ElementBase {
 
 export type ShapeKind = 'rect' | 'ellipse' | 'rounded' | 'line' | 'arrow'
 
+export type StrokeDash = 'solid' | 'dashed' | 'dotted'
+
 export interface ShapeElement extends ElementBase {
   type: 'shape'
   shape: ShapeKind
+  /** 선 서식 — line/arrow에서만 의미(스펙 §2). 그 외 kind는 기본값 고정·직렬화 미출력 */
+  strokeWidth: number
+  strokeDash: StrokeDash
+  headStart: boolean
+  headEnd: boolean
 }
 
 export type CellAlign = 'left' | 'center' | 'right'

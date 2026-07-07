@@ -34,7 +34,7 @@ function fixture(): DeckDoc {
     extraAttrs: {},
     extraClasses: ['intro'],
     elements: [
-      { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], shape: 'rect' }, // wd-2
+      { type: 'shape', id: gen(), frame: { left: 0, top: 0, width: 100, height: 50 }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], shape: 'rect', strokeWidth: 2, strokeDash: 'solid', headStart: false, headEnd: false }, // wd-2
       { type: 'text', id: gen(), frame: { left: 10, top: 60, width: 200, height: 80 }, rotation: 0, extraStyle: {}, extraAttrs: {}, extraClasses: [], html: '<p>a</p>' }, // wd-3
       { type: 'opaque', id: gen(), html: '<div class="x"></div>' }, // wd-4
     ],

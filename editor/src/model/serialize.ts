@@ -1,4 +1,4 @@
-import { isLinear, shapeInnerHtml } from './shapeSvg.ts'
+import { isLinear, lineDefaults, lineStyleOf, shapeInnerHtml } from './shapeSvg.ts'
 import { serializeInlineStyle } from './style.ts'
 import { serializeTableInner } from './tableMarkup.ts'
 import type { DeckDoc, KnownElement, Slide, SlideElement } from './types.ts'
@@ -65,8 +65,18 @@ function serializeElement(el: SlideElement): string {
       return `<div class="${escapeAttr(elementClass(el))}" style="${escapeAttr(style)}"${attrs}><img src="${escapeAttr(el.src)}" alt="${escapeAttr(el.alt)}"${imgStyle}></div>`
     }
     case 'shape': {
-      const inner = isLinear(el.shape) ? shapeInnerHtml(el.shape as 'line' | 'arrow', el.id) : ''
-      return `<div class="${escapeAttr(elementClass(el))}" data-shape="${el.shape}" style="${escapeAttr(style)}"${attrs}>${inner}</div>`
+      let lineAttrs = ''
+      let inner = ''
+      if (isLinear(el.shape)) {
+        const kind = el.shape as 'line' | 'arrow'
+        const d = lineDefaults(kind)
+        if (el.strokeWidth !== d.strokeWidth) lineAttrs += ` data-stroke-width="${el.strokeWidth}"`
+        if (el.strokeDash !== d.strokeDash) lineAttrs += ` data-stroke-dash="${el.strokeDash}"`
+        if (el.headStart !== d.headStart) lineAttrs += ` data-head-start="${el.headStart ? '1' : '0'}"`
+        if (el.headEnd !== d.headEnd) lineAttrs += ` data-head-end="${el.headEnd ? '1' : '0'}"`
+        inner = shapeInnerHtml(el.id, lineStyleOf(el))
+      }
+      return `<div class="${escapeAttr(elementClass(el))}" data-shape="${el.shape}"${lineAttrs} style="${escapeAttr(style)}"${attrs}>${inner}</div>`
     }
     case 'table':
       return `<div class="${escapeAttr(elementClass(el))}" style="${escapeAttr(style)}"${attrs}><table style="border-collapse:collapse; width:100%;">${serializeTableInner(el.colWidths, el.rows)}</table></div>`
