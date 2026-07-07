@@ -81,3 +81,11 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - beginDraw가 docAtStart 관례 미적용 — 그리기 중 Cmd+Z 시 스테일 doc 커밋 이론상 엣지(위 항목과 묶어 처리 권장). useShortcuts의 drawMode 비인지(그리기 중 Delete/undo 활성)도 동일 묶음
 - 슬라이드 밖 회색 여백에서 그리기 시작 가능 — 경계 밖 좌표의 선 생성(검증기 경고 수준, 스펙 이탈 아님)
 - 테스트 커버리지 소형 3건: arrow 기본값 data-head-end 미출력 전용 단언, 선 서식 다중 선택 일괄 패치, 머리 토글 no-op 케이스
+
+## Plan 9d 이월 (태스크·최종 리뷰에서 백로그 판정)
+
+- 검증기: elbow 점 1개(개수 위반) 전용 테스트 부재 — 코드 경로(validate.mjs elbow pts.length<2)는 정상, curve 3점 케이스는 테스트됨. 커버리지 갭
+- createShape가 path kind 드래그 경로에서 DEFAULT_PATH_POINTS 계산 후 즉시 points로 덮어씀 — 클릭 폴백엔 필수라 제거 불가, 드래그 1회 배열 생성 낭비(사소)
+- curveFromDrag 아치 부풀림이 드래그 방향 의존(좌→우 위로, 우→좌 아래로) — 진행 방향 좌측 일관 오프셋(스펙 §4 "같은 쪽" 충실). 사용자가 방향 무관 "항상 위로"를 원하면 부호를 |방향|으로 정규화 검토
+- line/arrow 끝점 핸들이 rotation≠0에서도 활성 — 8핸들·회전 핸들 완전 대체의 유일 재조정 경로(스펙 §5 의도). 무수정
+- (전 플랜 공유) 제스처 window 리스너 창 밖 릴리스 스테일 — points/lineend 제스처도 attachDrag 공유 패턴이라 동일. setPointerCapture 일괄 전환 시 함께
