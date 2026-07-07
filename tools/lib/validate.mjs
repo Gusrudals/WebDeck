@@ -147,6 +147,20 @@ function validateSlide(slide, num, ctx) {
         if (kids.length > 1 || (kids.length === 1 && kids[0].rawTagName.toLowerCase() !== 'svg')) {
           errors.push(`${label}: line/arrow 도형의 자식은 svg 1개만 허용됩니다`)
         }
+        const w = el.getAttribute('data-stroke-width')
+        if (w != null && !/^[1-9][0-9]*$/.test(w)) {
+          errors.push(`${label}: data-stroke-width는 양의 정수여야 합니다`)
+        }
+        const dash = el.getAttribute('data-stroke-dash')
+        if (dash != null && dash !== 'dashed' && dash !== 'dotted') {
+          errors.push(`${label}: data-stroke-dash는 dashed/dotted만 지원합니다`)
+        }
+        for (const name of ['data-head-start', 'data-head-end']) {
+          const v = el.getAttribute(name)
+          if (v != null && v !== '0' && v !== '1') {
+            errors.push(`${label}: ${name}는 0 또는 1이어야 합니다`)
+          }
+        }
       }
     }
     if (type === 'el-table') {

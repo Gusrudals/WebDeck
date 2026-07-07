@@ -155,6 +155,36 @@ const wrapSlide = (el) => `<!DOCTYPE html>
 <html data-webdeck-version="1"><head><meta charset="utf-8"><title>t</title></head>
 <body><main class="deck" data-slide-width="1280" data-slide-height="720">
 <section class="slide">${el}</section></main></body></html>`
+
+test('line의 무효 선 서식 속성은 오류', () => {
+  const bad = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="line" data-stroke-width="0" data-stroke-dash="wavy" data-head-end="yes" style="left:0px; top:0px; width:100px; height:8px;"><svg></svg></div>',
+    ),
+  )
+  assert.ok(bad.errors.some((e) => e.includes('data-stroke-width는 양의 정수여야 합니다')))
+  assert.ok(bad.errors.some((e) => e.includes('data-stroke-dash는 dashed/dotted만 지원합니다')))
+  assert.ok(bad.errors.some((e) => e.includes('data-head-end는 0 또는 1이어야 합니다')))
+})
+
+test('유효한 선 서식 속성 조합은 통과', () => {
+  const ok = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="arrow" data-stroke-width="4" data-stroke-dash="dotted" data-head-start="1" data-head-end="0" style="left:0px; top:0px; width:100px; height:8px;"><svg></svg></div>',
+    ),
+  )
+  assert.deepStrictEqual(ok.errors, [])
+})
+
+test('속성이 없으면 통과 (전부 선택 속성)', () => {
+  const ok = validateWebdeck(
+    wrapSlide(
+      '<div class="el el-shape" data-shape="line" style="left:0px; top:0px; width:100px; height:8px;"><svg></svg></div>',
+    ),
+  )
+  assert.deepStrictEqual(ok.errors, [])
+})
+
 const tableEl = (inner) =>
   wrapSlide(
     `<div class="el el-table" style="left:0px; top:0px; width:400px; height:100px;"><table>${inner}</table></div>`,

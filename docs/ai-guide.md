@@ -16,7 +16,7 @@
 9. `el-image`에는 `<img>`가 **정확히 1개** 있어야 함 (오류)
 10. `<img>`에는 `alt` 속성 필수 (경고)
 11. 외부 `<script src>` / `<link rel="stylesheet">` 금지 (자기완결형 원칙) (오류)
-12. `el-shape`의 `data-shape`는 `rect`/`ellipse`/`rounded`/`line`/`arrow` 5종 (v1.1) — line/arrow의 자식은 `<svg>` 1개만 허용 (오류)
+12. `el-shape`의 `data-shape`는 `rect`/`ellipse`/`rounded`/`line`/`arrow` 5종 (v1.1) — line/arrow의 자식은 `<svg>` 1개만 허용 (오류). line/arrow는 선택 속성으로 선 서식 지원: `data-stroke-width`(양의 정수 px, 기본 2), `data-stroke-dash`(`dashed`/`dotted`, 생략 = 실선), `data-head-start`/`data-head-end`(`0`/`1` — 기본: line은 머리 없음, arrow는 끝 머리). 내부 SVG는 에디터가 정준형으로 재생성하므로 이 속성들이 서식의 단일 원본이다
 13. `.el` 안에 다른 `.el`을 중첩하지 않는다 — 겹침은 절대 좌표 + DOM 순서(z-order)로 표현 (오류)
 14. `data-transition`(슬라이드 전환)은 `fade`/`push`만 지원 — 선택 속성 (오류)
 15. `el-table`에는 `<table>` 정확히 1개, 셀은 td/th만, 스팬은 양의 정수, 행별 그리드 정합 (오류)
@@ -85,6 +85,8 @@
 <div class="el el-shape" data-shape="ellipse" style="left:96px; top:200px; width:240px; height:160px; background:var(--wd-accent); border-radius:50%;"></div>
 <div class="el el-shape" data-shape="rounded" style="left:96px; top:200px; width:240px; height:160px; background:var(--wd-accent); border-radius:24px;"></div>
 <div class="el el-shape" data-shape="arrow" style="left:96px; top:400px; width:320px; height:8px; color:#374151; transform:rotate(45deg);"></div>
+<div class="el el-shape" data-shape="arrow" data-stroke-width="4" data-stroke-dash="dashed" style="left:96px; top:440px; width:320px; height:8px; color:#dc2626;"></div>
+<div class="el el-shape" data-shape="line" data-head-start="1" data-head-end="1" style="left:96px; top:480px; width:320px; height:8px; color:#374151;"></div>
 ```
 
 **표 (v1.1)** — `el-table` 안에 `<table>` 1개. 셀은 td/th만, 병합은 colspan/rowspan. **정형(행별 스팬 합 = 열 수)이 아니면 편집 불가(opaque)로 보존만 된다.** `el-table` 바로 안에 `<table>` 외의 텍스트가 섞여도 마찬가지로 편집 불가(opaque)로 보존만 된다(도형 안에 텍스트를 중첩하지 않는 것과 같은 원칙). 열 너비는 colgroup의 %:
