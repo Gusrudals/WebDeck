@@ -3,6 +3,7 @@ import type { Dispatch, FocusEvent, PointerEvent as ReactPointerEvent } from 're
 import { alignFrame, distributeFrames } from '../canvas/geometry.ts'
 import type { AlignMode } from '../canvas/geometry.ts'
 import {
+  LINEAR_INSERT_FRAME,
   addElement,
   createImageElement,
   createShape,
@@ -47,10 +48,14 @@ export function Toolbar({
   state,
   dispatch,
   idGen,
+  drawMode,
+  setDrawMode,
 }: {
   state: EditorState
   dispatch: Dispatch<EditorAction>
   idGen: () => string
+  drawMode: 'line' | 'arrow' | null
+  setDrawMode: (m: 'line' | 'arrow' | null) => void
 }) {
   const { doc, currentSlideIndex, selectedIds, editingTextId } = state
   const slide = doc?.slides[currentSlideIndex] ?? null
@@ -122,7 +127,7 @@ export function Toolbar({
   const insertShapeKind = (kind: ShapeKind) => {
     if (!doc || !slide) return
     const frame = kind === 'line' || kind === 'arrow'
-      ? { left: 480, top: 356, width: 320, height: 8 }
+      ? LINEAR_INSERT_FRAME
       : { left: 520, top: 280, width: 240, height: 160 }
     const el = createShape(idGen, kind, frame)
     dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
@@ -207,11 +212,27 @@ export function Toolbar({
       <div className="group" aria-label="삽입">
         <button type="button" disabled={!hasDoc} onClick={insertText}>텍스트 상자</button>
         <div className="layout-popover-root" ref={shapeRef}>
-          <button type="button" disabled={!hasDoc} onClick={() => setShapeOpen((o) => !o)}>도형</button>
+          <button
+            type="button"
+            disabled={!hasDoc}
+            className={drawMode ? 'active' : undefined}
+            onClick={() => setShapeOpen((o) => !o)}
+          >
+            도형
+          </button>
           {shapeOpen && (
             <div className="layout-popover" role="menu" style={anchoredPopoverStyle(shapeRef.current)}>
               {SHAPE_MENU.map((s) => (
-                <button key={s.kind} type="button" role="menuitem" onClick={() => { setShapeOpen(false); insertShapeKind(s.kind) }}>
+                <button
+                  key={s.kind}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setShapeOpen(false)
+                    if (s.kind === 'line' || s.kind === 'arrow') setDrawMode(s.kind)
+                    else insertShapeKind(s.kind)
+                  }}
+                >
                   {s.label}
                 </button>
               ))}

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
 import type { TableSel } from '../App.tsx'
-import { moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
+import { LINEAR_INSERT_FRAME, addElement, createShape, moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
+import { normalizeAngle } from '../model/rotation.ts'
 import { flattenAnchors, insertRow, setCellHtml, setColWidths } from '../model/tableOps.ts'
 import type { DeckDoc, Frame, TableElement } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
@@ -15,6 +16,7 @@ import type { TableInteraction } from './TableView.tsx'
 
 const MARGIN = 48
 const DRAG_THRESHOLD = 3
+const DRAW_MIN_DIST = 8
 
 export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2]
 
@@ -63,9 +65,23 @@ export interface CanvasAreaProps {
   dispatch: Dispatch<EditorAction>
   tableSel: TableSel | null
   setTableSel: (s: TableSel | null) => void
+  drawMode: 'line' | 'arrow' | null
+  setDrawMode: (m: 'line' | 'arrow' | null) => void
+  idGen: () => string
 }
 
-export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispatch, tableSel, setTableSel }: CanvasAreaProps) {
+export function CanvasArea({
+  doc,
+  slideIndex,
+  selectedIds,
+  editingTextId,
+  dispatch,
+  tableSel,
+  setTableSel,
+  drawMode,
+  setDrawMode,
+  idGen,
+}: CanvasAreaProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [fitScale, setFitScale] = useState(1)
   const [zoom, setZoom] = useState<'fit' | number>('fit')
@@ -75,6 +91,7 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
   const [gesture, setGesture] = useState<Gesture | null>(null)
   const [editingCell, setEditingCell] = useState<{ elementId: string; r: number; c: number } | null>(null)
   const cellDragRef = useRef(false)
+  const [drawDraft, setDrawDraft] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
   // Critical 보정 2: 셀 커밋(APPLY_DOC) 직후 같은 동기 틱에서 onCellTab의 행 추가가 이어질 때
   // doc prop은 아직 재렌더 전이라 스테일하다 — 방금 커밋한 doc을 여기 저장해 그 위에 이어 붙인다.
   const pendingDocRef = useRef<DeckDoc | null>(null)
@@ -123,6 +140,23 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     return () => area.removeEventListener('wheel', onWheel)
   }, [fitScale])
 
+  useEffect(() => {
+    if (!drawMode) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawMode(null)
+    }
+    const onOutside = (e: PointerEvent) => {
+      // 툴바·패널 등 캔버스 밖 조작 = 모드 취소 (스펙 §5). 캡처 — 요소 제스처 stopPropagation 면역
+      if (!(e.target as HTMLElement | null)?.closest?.('.canvas-area')) setDrawMode(null)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onOutside, true)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onOutside, true)
+    }
+  }, [drawMode, setDrawMode])
+
   const previewDoc = useMemo(() => {
     if (!gesture) return doc
     if (gesture.kind === 'move') {
@@ -145,6 +179,77 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
 
   const slide = doc.slides[slideIndex]
   if (!slide) return null
+
+  const beginDraw = (e: ReactPointerEvent) => {
+    const kind = drawMode
+    if (!kind) return
+    e.preventDefault()
+    const stage = ref.current?.querySelector('.slide-stage')
+    if (!stage) return
+    const rect = stage.getBoundingClientRect()
+    const toDoc = (cx: number, cy: number) =>
+      [(cx - rect.left) / scaleRef.current, (cy - rect.top) / scaleRef.current] as const
+    const [x1, y1] = toDoc(e.clientX, e.clientY)
+    const current = { x1, y1, x2: x1, y2: y1 }
+    setDrawDraft({ ...current })
+    const onMove = (ev: PointerEvent) => {
+      let [x2, y2] = toDoc(ev.clientX, ev.clientY)
+      if (ev.shiftKey) {
+        // Shift = 15° 각도 스냅 — 끝점을 스냅 각도 방향으로 같은 거리에 재투영
+        const dist = Math.hypot(x2 - x1, y2 - y1)
+        const snapped = ((Math.round((Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI / 15) * 15) * Math.PI) / 180
+        x2 = x1 + dist * Math.cos(snapped)
+        y2 = y1 + dist * Math.sin(snapped)
+      }
+      current.x2 = x2
+      current.y2 = y2
+      setDrawDraft({ ...current })
+    }
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('keydown', onKey)
+      setDrawDraft(null)
+    }
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        cleanup()
+        setDrawMode(null)
+      }
+    }
+    const onUp = () => {
+      cleanup()
+      setDrawMode(null)
+      const dx = current.x2 - x1
+      const dy = current.y2 - y1
+      const dist = Math.hypot(dx, dy)
+      if (dist < DRAW_MIN_DIST) {
+        // 클릭 폴백 — 툴바 클릭 삽입과 동일한 기본 가로선 (스펙 §5)
+        const el = createShape(idGen, kind, LINEAR_INSERT_FRAME)
+        dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
+        return
+      }
+      const rotation = normalizeAngle(Math.round((Math.atan2(dy, dx) * 180) / Math.PI))
+      const height = LINEAR_INSERT_FRAME.height
+      const frame = {
+        left: Math.round((x1 + current.x2) / 2 - dist / 2),
+        top: Math.round((y1 + current.y2) / 2 - height / 2),
+        width: Math.round(dist),
+        height,
+      }
+      const el = { ...createShape(idGen, kind, frame), rotation }
+      dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
+    }
+    const onCancel = () => {
+      cleanup()
+      setDrawMode(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('keydown', onKey)
+  }
 
   const beginMove = (e: ReactPointerEvent, ids: string[]) => {
     const startX = e.clientX
@@ -443,8 +548,12 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
     selectedIds.length === 1 ? slide.elements.filter(isKnownElement).find((el) => el.id === selectedIds[0]) : undefined
   return (
     <main
-      className="canvas-area"
-      onPointerDown={() => {
+      className={drawMode ? 'canvas-area drawing' : 'canvas-area'}
+      onPointerDown={(e) => {
+        if (drawMode) {
+          beginDraw(e)
+          return
+        }
         if (!editingTextId) dispatch({ type: 'CLEAR_SELECTION' })
       }}
     >
@@ -457,7 +566,11 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
                 width={doc.slideWidth}
                 height={doc.slideHeight}
                 themeVars={themeVars}
-                interaction={{ selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit, tableFor }}
+                interaction={
+                  drawMode
+                    ? undefined
+                    : { selectedIds, editingTextId, onElementPointerDown, onElementDoubleClick, onTextCommit, tableFor }
+                }
               />
               <SelectionOverlay
                 slide={previewSlide}
@@ -469,6 +582,19 @@ export function CanvasArea({ doc, slideIndex, selectedIds, editingTextId, dispat
                     : undefined
                 }
               />
+              {drawDraft && (
+                <svg className="draw-preview" width={doc.slideWidth} height={doc.slideHeight}>
+                  <line
+                    x1={drawDraft.x1}
+                    y1={drawDraft.y1}
+                    x2={drawDraft.x2}
+                    y2={drawDraft.y2}
+                    stroke="#374151"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                  />
+                </svg>
+              )}
             </div>
           </div>
         </div>

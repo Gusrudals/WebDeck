@@ -149,3 +149,8 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 
 /* 속성 패널 토글 버튼 눌림 표시 (선 스타일·화살표 머리 등) */
 .props [aria-pressed="true"] { background: #dbeafe; border-color: #93c5fd; }
+
+/* 드래그 그리기 모드 (Plan 9c Task 3) */
+.toolbar button.active { background: #dbeafe; border-color: #93c5fd; }
+.canvas-area.drawing, .canvas-area.drawing .slide-view .el { cursor: crosshair; }
+.draw-preview { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }

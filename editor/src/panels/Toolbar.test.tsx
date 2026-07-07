@@ -45,10 +45,13 @@ function makeState(over: Partial<EditorState> = {}): EditorState {
   return { ...opened, ...over }
 }
 
-function renderToolbar(over: Partial<EditorState> = {}) {
+function renderToolbar(over: Partial<EditorState> = {}, drawMode: 'line' | 'arrow' | null = null) {
   const dispatch = vi.fn()
-  const utils = render(<Toolbar state={makeState(over)} dispatch={dispatch} idGen={idGen} />)
-  return { dispatch, ...utils }
+  const setDrawMode = vi.fn()
+  const utils = render(
+    <Toolbar state={makeState(over)} dispatch={dispatch} idGen={idGen} drawMode={drawMode} setDrawMode={setDrawMode} />,
+  )
+  return { dispatch, setDrawMode, ...utils }
 }
 
 function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
@@ -101,16 +104,26 @@ test('타원 선택은 border-radius 50% 도형을 1 APPLY_DOC으로 삽입한�
   expect(added.extraStyle['border-radius']).toBe('50%')
 })
 
-test('선 선택은 320×8 선을 삽입한다', () => {
-  const { dispatch, getByRole } = renderToolbar()
+// 선/화살표는 Plan 9c부터 즉시 삽입 대신 드래그 그리기 모드에 진입한다 (아래 그리기 모드 테스트로 대체)
+test('도형 메뉴에서 선을 고르면 삽입 대신 그리기 모드에 진입한다', () => {
+  const { dispatch, setDrawMode, getByRole } = renderToolbar()
   fireEvent.click(getByRole('button', { name: '도형' }))
   fireEvent.click(getByRole('menuitem', { name: '선' }))
-  const doc = (dispatch.mock.calls.find(([a]) => a?.type === 'APPLY_DOC')![0]).doc as DeckDoc
-  const added = doc.slides[0]!.elements.at(-1)!
-  if (added.type !== 'shape') return
-  expect(added.shape).toBe('line')
-  expect(added.frame.width).toBe(320)
-  expect(added.frame.height).toBe(8)
+  expect(setDrawMode).toHaveBeenCalledWith('line')
+  expect(appliedDoc(dispatch)).toBeNull()
+})
+
+test('사각형은 여전히 즉시 삽입된다', () => {
+  const { dispatch, setDrawMode, getByRole } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  fireEvent.click(getByRole('menuitem', { name: '사각형' }))
+  expect(appliedDoc(dispatch)).toBeTruthy()
+  expect(setDrawMode).not.toHaveBeenCalled()
+})
+
+test('그리기 모드면 도형 버튼에 active 클래스', () => {
+  const { getByRole } = renderToolbar({}, 'line')
+  expect(getByRole('button', { name: '도형' }).classList.contains('active')).toBe(true)
 })
 
 test('표 버튼은 8×8 그리드 피커를 열고 hover 라벨을 보여준다', () => {

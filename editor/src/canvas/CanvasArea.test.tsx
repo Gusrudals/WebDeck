@@ -1,8 +1,8 @@
 import { fireEvent, render } from '@testing-library/react'
-import { expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import type { TableSel } from '../App.tsx'
 import { createIdGen } from '../model/id.ts'
-import { addElement } from '../model/ops.ts'
+import { LINEAR_INSERT_FRAME, addElement } from '../model/ops.ts'
 import type { DeckDoc } from '../model/types.ts'
 import { parseWebdeck } from '../model/parse.ts'
 import { createTable } from '../model/tableOps.ts'
@@ -48,12 +48,24 @@ function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
   return action ? (action.doc as DeckDoc) : null
 }
 
-function renderCanvas(selectedIds: string[] = []) {
+function renderCanvas(selectedIds: string[] = [], drawMode: 'line' | 'arrow' | null = null) {
   const dispatch = vi.fn()
+  const setDrawMode = vi.fn()
   const utils = render(
-    <CanvasArea doc={DOC} slideIndex={0} selectedIds={selectedIds} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={DOC}
+      slideIndex={0}
+      selectedIds={selectedIds}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={drawMode}
+      setDrawMode={setDrawMode}
+      idGen={createIdGen('d')}
+    />,
   )
-  return { dispatch, ...utils }
+  return { dispatch, setDrawMode, ...utils }
 }
 
 // 단일 도형 요소 문서 픽스처 — 기존 DOC_ONE(문서 파싱→render→요소 선택) 준비 코드 관례를 추출해 재사용
@@ -74,7 +86,18 @@ function renderCanvasWithSelection() {
   const dispatch = vi.fn()
   const elId = DOC_SHAPE_ONLY.slides[0]!.elements[0]!.id
   const utils = render(
-    <CanvasArea doc={DOC_SHAPE_ONLY} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={DOC_SHAPE_ONLY}
+      slideIndex={0}
+      selectedIds={[elId]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
   )
   return { dispatch, ...utils }
 }
@@ -84,7 +107,18 @@ function renderCanvasWithRotatedSelection() {
   const dispatch = vi.fn()
   const elId = DOC_ROTATED.slides[0]!.elements[0]!.id
   const utils = render(
-    <CanvasArea doc={DOC_ROTATED} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={DOC_ROTATED}
+      slideIndex={0}
+      selectedIds={[elId]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
   )
   return { dispatch, ...utils }
 }
@@ -116,7 +150,18 @@ test('이미 선택된 요소 클릭은 선택을 유지한다', () => {
 test('텍스트 편집 중에는 요소 클릭이 선택을 바꾸지 않는다', () => {
   const dispatch = vi.fn()
   const { container } = render(
-    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={DOC}
+      slideIndex={0}
+      selectedIds={[EL_TEXT]}
+      editingTextId={EL_TEXT}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
   )
   fireEvent.pointerDown(container.querySelector('.el-shape')!, { clientX: 310, clientY: 310 })
   expect(dispatch).not.toHaveBeenCalled()
@@ -159,7 +204,18 @@ test('단일 이동은 슬라이드 중앙에 스냅하고 가이드를 그린�
   const dispatch = vi.fn()
   const elId = DOC_ONE.slides[0]!.elements[0]!.id
   const { getByText, container } = render(
-    <CanvasArea doc={DOC_ONE} slideIndex={0} selectedIds={[elId]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={DOC_ONE}
+      slideIndex={0}
+      selectedIds={[elId]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
   )
   fireEvent.pointerDown(getByText('홀로'), { clientX: 0, clientY: 0 })
   fireEvent.pointerMove(window, { clientX: 594, clientY: 100 })
@@ -286,7 +342,18 @@ test('도형 더블클릭은 편집을 시작하지 않는다', () => {
 function renderEditing() {
   const dispatch = vi.fn()
   const utils = render(
-    <CanvasArea doc={DOC} slideIndex={0} selectedIds={[EL_TEXT]} editingTextId={EL_TEXT} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={DOC}
+      slideIndex={0}
+      selectedIds={[EL_TEXT]}
+      editingTextId={EL_TEXT}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
   )
   const editable = utils.container.querySelector('.text-editable') as HTMLElement
   return { dispatch, editable, ...utils }
@@ -386,6 +453,9 @@ function renderCanvasWithTable() {
       dispatch={dispatch}
       tableSel={tableSel}
       setTableSel={setTableSel}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
     />,
   )
   return { dispatch, setTableSel, tableId, doc, ...utils }
@@ -478,7 +548,18 @@ test('보정(Minor·계약 ⑧): 선택 해제 후 같은 표 재선택 시 이�
   expect(container.querySelector('[contenteditable]')).toBeTruthy()
   // blur 없이 선택 해제(패널/키보드 경유 시나리오) — editingCell이 스테일로 남으면 안 된다
   rerender(
-    <CanvasArea doc={doc} slideIndex={0} selectedIds={[]} editingTextId={null} dispatch={dispatch} tableSel={null} setTableSel={() => {}} />,
+    <CanvasArea
+      doc={doc}
+      slideIndex={0}
+      selectedIds={[]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
   )
   rerender(
     <CanvasArea
@@ -489,6 +570,9 @@ test('보정(Minor·계약 ⑧): 선택 해제 후 같은 표 재선택 시 이�
       dispatch={dispatch}
       tableSel={null}
       setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
     />,
   )
   expect(container.querySelector('[contenteditable]')).toBeNull()
@@ -519,6 +603,9 @@ test('보정: 이웃 두 열 합(pairPct)이 10% 미만이면 드래그해도 �
       dispatch={dispatch}
       tableSel={null}
       setTableSel={() => {}}
+      drawMode={null}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
     />,
   )
   const handle = container.querySelectorAll('.col-resize-handle')[0]!
@@ -533,4 +620,73 @@ test('보정: 이웃 두 열 합(pairPct)이 10% 미만이면 드래그해도 �
   for (const w of el.colWidths) expect(w).toBeGreaterThanOrEqual(0)
   expect(el.colWidths[0]! + el.colWidths[1]!).toBeCloseTo(4, 1)
   expect(el.colWidths.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 1)
+})
+
+// ---- 드래그 그리기 모드 (Plan 9c Task 3) ----
+
+describe('드래그 그리기 모드 (Plan 9c)', () => {
+  test('드래그로 두 점을 찍으면 중심+길이+각도의 선이 생성된다', () => {
+    const { dispatch, setDrawMode, container } = renderCanvas([], 'line')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 100, clientY: 300 })
+    fireEvent.pointerUp(window)
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    expect(added.type).toBe('shape')
+    if (added.type !== 'shape') return
+    expect(added.shape).toBe('line')
+    expect(added.rotation).toBe(90)
+    expect(added.frame).toEqual({ left: 0, top: 196, width: 200, height: 8 })
+    expect(setDrawMode).toHaveBeenCalledWith(null)
+  })
+
+  test('Shift 드래그는 각도를 15° 단위로 스냅한다', () => {
+    const { dispatch, container } = renderCanvas([], 'line')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 0, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 200, clientY: 110, shiftKey: true })
+    fireEvent.pointerUp(window)
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    if (added.type !== 'shape') throw new Error('shape 기대')
+    expect(added.rotation).toBe(0)
+    expect(added.frame.width).toBe(200)
+  })
+
+  test('8px 미만 드래그(클릭)는 기본 가로선 폴백', () => {
+    const { dispatch, container } = renderCanvas([], 'line')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 100 })
+    fireEvent.pointerUp(window, { clientX: 102, clientY: 101 })
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    if (added.type !== 'shape') throw new Error('shape 기대')
+    expect(added.frame).toEqual(LINEAR_INSERT_FRAME)
+  })
+
+  test('드래그 중 Esc는 생성 없이 모드를 끝낸다', () => {
+    const { dispatch, setDrawMode, container } = renderCanvas([], 'line')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 100, clientY: 300 })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.pointerUp(window)
+    expect(appliedDoc(dispatch)).toBeNull()
+    expect(setDrawMode).toHaveBeenCalledWith(null)
+  })
+
+  test('모드 중 캔버스 밖 pointerdown은 모드를 취소한다 (캡처 — stopPropagation 면역)', () => {
+    const { setDrawMode } = renderCanvas([], 'line')
+    const outside = document.createElement('div')
+    outside.addEventListener('pointerdown', (e) => e.stopPropagation())
+    document.body.appendChild(outside)
+    fireEvent.pointerDown(outside)
+    document.body.removeChild(outside)
+    expect(setDrawMode).toHaveBeenCalledWith(null)
+  })
+
+  test('모드 중에는 요소 클릭이 선택을 바꾸지 않는다', () => {
+    const { dispatch, container } = renderCanvas([], 'line')
+    fireEvent.pointerDown(container.querySelector('.el')!, { clientX: 10, clientY: 10 })
+    const types = dispatch.mock.calls.map(([a]) => (a as { type: string }).type)
+    expect(types).not.toContain('SELECT_ELEMENTS')
+    fireEvent.pointerUp(window)
+  })
 })

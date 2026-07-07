@@ -34,6 +34,7 @@ export function App() {
   const [docFile, setDocFile] = useState<{ seq: number; file: DocModeFile } | null>(null)
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(listCustomTemplates)
   const [tableSel, setTableSel] = useState<TableSel | null>(null)
+  const [drawMode, setDrawMode] = useState<'line' | 'arrow' | null>(null)
   const docSeqRef = useRef(0)
   const idGenRef = useRef(createIdGen('n'))
   useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs, docFile === null)
@@ -43,6 +44,11 @@ export function App() {
     // (범위 선택 중 다른 액션이 selectedIds를 동일 값으로 재설정해도 표 셀 범위가 날아가지 않게)
     setTableSel((sel) => (sel && state.selectedIds.length === 1 && state.selectedIds[0] === sel.elementId ? sel : null))
   }, [state.selectedIds, state.currentSlideIndex, state.doc === null])
+
+  useEffect(() => {
+    // 문서가 닫히면(새로 열기 등) 남아있던 그리기 모드를 해제한다
+    if (state.doc === null) setDrawMode(null)
+  }, [state.doc === null])
 
   useEffect(() => {
     // 문서 모드에서는 DocumentMode가 자체 beforeunload를 관리한다 — 스테일 덱 dirty로 경고하지 않는다
@@ -239,7 +245,7 @@ export function App() {
           </span>
         )}
       </header>
-      <Toolbar state={state} dispatch={dispatch} idGen={idGenRef.current} />
+      <Toolbar state={state} dispatch={dispatch} idGen={idGenRef.current} drawMode={drawMode} setDrawMode={setDrawMode} />
       <aside className="side">
         {state.doc && (
           <SlidePanel
@@ -283,6 +289,9 @@ export function App() {
           dispatch={dispatch}
           tableSel={tableSel}
           setTableSel={setTableSel}
+          drawMode={drawMode}
+          setDrawMode={setDrawMode}
+          idGen={idGenRef.current}
         />
       ) : (
         <StartScreen
