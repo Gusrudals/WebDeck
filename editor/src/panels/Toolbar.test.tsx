@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { parseWebdeck } from '../model/parse.ts'
 import type { DeckDoc } from '../model/types.ts'
+import type { StrokeKind } from '../model/shapeSvg.ts'
 import { editorReducer, initialEditorState } from '../state/store.ts'
 import type { EditorState } from '../state/store.ts'
 import { FONT_FAMILIES } from './format.ts'
@@ -45,7 +46,7 @@ function makeState(over: Partial<EditorState> = {}): EditorState {
   return { ...opened, ...over }
 }
 
-function renderToolbar(over: Partial<EditorState> = {}, drawMode: 'line' | 'arrow' | null = null) {
+function renderToolbar(over: Partial<EditorState> = {}, drawMode: StrokeKind | null = null) {
   const dispatch = vi.fn()
   const setDrawMode = vi.fn()
   const utils = render(
@@ -83,11 +84,13 @@ test('도형 팝오버에서 사각형 선택은 사각형을 추가한다', () 
   expect(els[2]!.type).toBe('shape')
 })
 
-test('도형 버튼은 팝오버를 열고 5종을 보여준다', () => {
+test('도형 버튼은 팝오버를 열고 7종을 보여준다', () => {
   const { getByRole, getAllByRole, queryByRole } = renderToolbar()
   expect(queryByRole('menu')).toBeNull()
   fireEvent.click(getByRole('button', { name: '도형' }))
-  expect(getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['사각형', '둥근 사각형', '타원', '선', '화살표'])
+  expect(getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
+    '사각형', '둥근 사각형', '타원', '선', '화살표', '꺾인 연결선', '곡선',
+  ])
 })
 
 test('타원 선택은 border-radius 50% 도형을 1 APPLY_DOC으로 삽입한다', () => {
@@ -110,6 +113,19 @@ test('도형 메뉴에서 선을 고르면 삽입 대신 그리기 모드에 진
   fireEvent.click(getByRole('button', { name: '도형' }))
   fireEvent.click(getByRole('menuitem', { name: '선' }))
   expect(setDrawMode).toHaveBeenCalledWith('line')
+  expect(appliedDoc(dispatch)).toBeNull()
+})
+
+test('꺾인 연결선/곡선 메뉴는 그리기 모드에 진입한다', () => {
+  const { dispatch, setDrawMode, getByRole } = renderToolbar()
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  fireEvent.click(getByRole('menuitem', { name: '꺾인 연결선' }))
+  expect(setDrawMode).toHaveBeenCalledWith('elbow')
+  expect(appliedDoc(dispatch)).toBeNull()
+
+  fireEvent.click(getByRole('button', { name: '도형' }))
+  fireEvent.click(getByRole('menuitem', { name: '곡선' }))
+  expect(setDrawMode).toHaveBeenCalledWith('curve')
   expect(appliedDoc(dispatch)).toBeNull()
 })
 

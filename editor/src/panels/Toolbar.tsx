@@ -15,6 +15,8 @@ import {
   setTextHtml,
 } from '../model/ops.ts'
 import type { ZDirection } from '../model/ops.ts'
+import { isStroke } from '../model/shapeSvg.ts'
+import type { StrokeKind } from '../model/shapeSvg.ts'
 import { createTable } from '../model/tableOps.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { ShapeKind } from '../model/types.ts'
@@ -54,8 +56,8 @@ export function Toolbar({
   state: EditorState
   dispatch: Dispatch<EditorAction>
   idGen: () => string
-  drawMode: 'line' | 'arrow' | null
-  setDrawMode: (m: 'line' | 'arrow' | null) => void
+  drawMode: StrokeKind | null
+  setDrawMode: (m: StrokeKind | null) => void
 }) {
   const { doc, currentSlideIndex, selectedIds, editingTextId } = state
   const slide = doc?.slides[currentSlideIndex] ?? null
@@ -94,6 +96,8 @@ export function Toolbar({
     { kind: 'ellipse', label: '타원' },
     { kind: 'line', label: '선' },
     { kind: 'arrow', label: '화살표' },
+    { kind: 'elbow', label: '꺾인 연결선' },
+    { kind: 'curve', label: '곡선' },
   ]
 
   /** 텍스트 도구 blur 폴백 — 포커스가 도구/에디터블 밖으로 나가면 편집을 정상 종료한다 */
@@ -229,7 +233,7 @@ export function Toolbar({
                   role="menuitem"
                   onClick={() => {
                     setShapeOpen(false)
-                    if (s.kind === 'line' || s.kind === 'arrow') setDrawMode(s.kind)
+                    if (isStroke(s.kind)) setDrawMode(s.kind)
                     else insertShapeKind(s.kind)
                   }}
                 >

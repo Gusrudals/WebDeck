@@ -2,9 +2,10 @@ import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import type { TableSel } from '../App.tsx'
 import { createIdGen } from '../model/id.ts'
-import { LINEAR_INSERT_FRAME, addElement } from '../model/ops.ts'
+import { LINEAR_INSERT_FRAME, PATH_INSERT_FRAME, addElement } from '../model/ops.ts'
 import type { DeckDoc } from '../model/types.ts'
 import { parseWebdeck } from '../model/parse.ts'
+import type { StrokeKind } from '../model/shapeSvg.ts'
 import { createTable } from '../model/tableOps.ts'
 import { CanvasArea } from './CanvasArea.tsx'
 
@@ -48,7 +49,7 @@ function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
   return action ? (action.doc as DeckDoc) : null
 }
 
-function renderCanvas(selectedIds: string[] = [], drawMode: 'line' | 'arrow' | null = null) {
+function renderCanvas(selectedIds: string[] = [], drawMode: StrokeKind | null = null) {
   const dispatch = vi.fn()
   const setDrawMode = vi.fn()
   const utils = render(
@@ -696,5 +697,64 @@ describe('드래그 그리기 모드 (Plan 9c)', () => {
     // 자동 선택된 선의 핸들 위에서 새 그리기를 시작하면 기존 요소가 의도치 않게 리사이즈/회전된다.
     const { container } = renderCanvas([EL_SHAPE], 'line')
     expect(container.querySelectorAll('.handle')).toHaveLength(0)
+  })
+})
+
+// ---- 드래그 그리기 모드 확장 — elbow/curve (Plan 9d Task 4) ----
+
+describe('드래그 그리기 모드 확장 (Plan 9d Task 4)', () => {
+  test('elbow 드래그: 가로 우세 H-V-H 생성', () => {
+    const { dispatch, container } = renderCanvas([], 'elbow')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 420, clientY: 260 })
+    fireEvent.pointerUp(window)
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    expect(added.type).toBe('shape')
+    if (added.type !== 'shape') return
+    expect(added.shape).toBe('elbow')
+    expect(added.frame).toEqual({ left: 100, top: 100, width: 320, height: 160 })
+    expect(added.points).toEqual([[0, 0], [50, 0], [50, 100], [100, 100]])
+    expect(added.rotation).toBe(0)
+  })
+
+  test('curve 드래그: 4점 아치 + frame = 점 bbox', () => {
+    const { dispatch, container } = renderCanvas([], 'curve')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(window, { clientX: 400, clientY: 300 })
+    fireEvent.pointerUp(window)
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    expect(added.type).toBe('shape')
+    if (added.type !== 'shape') return
+    expect(added.shape).toBe('curve')
+    expect(added.frame).toEqual({ left: 100, top: 225, width: 300, height: 75 })
+    expect(added.points[0]).toEqual([0, 100])
+    expect(added.points[3]).toEqual([100, 100])
+  })
+
+  test('elbow 클릭 폴백: PATH_INSERT_FRAME + 기본 Z자', () => {
+    const { dispatch, container } = renderCanvas([], 'elbow')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 100 })
+    fireEvent.pointerUp(window, { clientX: 102, clientY: 101 })
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    expect(added.type).toBe('shape')
+    if (added.type !== 'shape') return
+    expect(added.shape).toBe('elbow')
+    expect(added.frame).toEqual(PATH_INSERT_FRAME)
+    expect(added.points).toEqual([[0, 0], [50, 0], [50, 100], [100, 100]])
+  })
+
+  test('elbow 드래그에서 Shift는 스냅하지 않는다', () => {
+    const { dispatch, container } = renderCanvas([], 'elbow')
+    fireEvent.pointerDown(container.querySelector('.canvas-area')!, { clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 420, clientY: 270, shiftKey: true })
+    fireEvent.pointerUp(window)
+    const doc = appliedDoc(dispatch)!
+    const added = doc.slides[0]!.elements.at(-1)!
+    expect(added.type).toBe('shape')
+    if (added.type !== 'shape') return
+    expect(added.frame.height).toBe(170)
   })
 })

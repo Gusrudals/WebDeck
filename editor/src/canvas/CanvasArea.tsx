@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
 import type { TableSel } from '../App.tsx'
-import { LINEAR_INSERT_FRAME, addElement, createShape, moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
-import { normalizeAngle } from '../model/rotation.ts'
+import { LINEAR_INSERT_FRAME, PATH_INSERT_FRAME, addElement, createShape, moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
+import { absPointsOf, curveFromDrag, elbowFromDrag, lineFromEndpoints } from '../model/pathOps.ts'
+import { isPath } from '../model/shapeSvg.ts'
+import type { StrokeKind } from '../model/shapeSvg.ts'
 import { flattenAnchors, insertRow, setCellHtml, setColWidths } from '../model/tableOps.ts'
 import type { DeckDoc, Frame, TableElement } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
@@ -65,8 +67,8 @@ export interface CanvasAreaProps {
   dispatch: Dispatch<EditorAction>
   tableSel: TableSel | null
   setTableSel: (s: TableSel | null) => void
-  drawMode: 'line' | 'arrow' | null
-  setDrawMode: (m: 'line' | 'arrow' | null) => void
+  drawMode: StrokeKind | null
+  setDrawMode: (m: StrokeKind | null) => void
   idGen: () => string
 }
 
@@ -194,8 +196,8 @@ export function CanvasArea({
     setDrawDraft({ ...current })
     const onMove = (ev: PointerEvent) => {
       let [x2, y2] = toDoc(ev.clientX, ev.clientY)
-      if (ev.shiftKey) {
-        // Shift = 15° 각도 스냅 — 끝점을 스냅 각도 방향으로 같은 거리에 재투영
+      if (ev.shiftKey && (kind === 'line' || kind === 'arrow')) {
+        // Shift = 15° 각도 스냅 — 끝점을 스냅 각도 방향으로 같은 거리에 재투영. elbow/curve는 스냅하지 않는다(9d §4)
         const dist = Math.hypot(x2 - x1, y2 - y1)
         const snapped = ((Math.round((Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI / 15) * 15) * Math.PI) / 180
         x2 = x1 + dist * Math.cos(snapped)
@@ -221,23 +223,24 @@ export function CanvasArea({
     const onUp = () => {
       cleanup()
       setDrawMode(null)
-      const dx = current.x2 - x1
-      const dy = current.y2 - y1
-      const dist = Math.hypot(dx, dy)
+      const p1: [number, number] = [x1, y1]
+      const p2: [number, number] = [current.x2, current.y2]
+      const dist = Math.hypot(p2[0] - p1[0], p2[1] - p1[1])
       if (dist < DRAW_MIN_DIST) {
-        // 클릭 폴백 — 툴바 클릭 삽입과 동일한 기본 가로선 (스펙 §5)
-        const el = createShape(idGen, kind, LINEAR_INSERT_FRAME)
+        // 클릭 폴백 — 기본 도형 삽입 (스펙 §5·9d §4)
+        const el = isPath(kind)
+          ? createShape(idGen, kind, PATH_INSERT_FRAME)
+          : createShape(idGen, kind, LINEAR_INSERT_FRAME)
         dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
         return
       }
-      const rotation = normalizeAngle(Math.round((Math.atan2(dy, dx) * 180) / Math.PI))
-      const height = LINEAR_INSERT_FRAME.height
-      const frame = {
-        left: Math.round((x1 + current.x2) / 2 - dist / 2),
-        top: Math.round((y1 + current.y2) / 2 - height / 2),
-        width: Math.round(dist),
-        height,
+      if (isPath(kind)) {
+        const { frame, points } = kind === 'elbow' ? elbowFromDrag(p1, p2) : curveFromDrag(p1, p2)
+        const el = { ...createShape(idGen, kind, frame), points }
+        dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
+        return
       }
+      const { frame, rotation } = lineFromEndpoints(p1, p2, LINEAR_INSERT_FRAME.height)
       const el = { ...createShape(idGen, kind, frame), rotation }
       dispatch({ type: 'APPLY_DOC', doc: addElement(doc, slide.id, el), select: [el.id] })
     }
@@ -586,15 +589,23 @@ export function CanvasArea({
               />
               {drawDraft && (
                 <svg className="draw-preview" width={doc.slideWidth} height={doc.slideHeight}>
-                  <line
-                    x1={drawDraft.x1}
-                    y1={drawDraft.y1}
-                    x2={drawDraft.x2}
-                    y2={drawDraft.y2}
-                    stroke="#374151"
-                    strokeWidth={2}
-                    strokeDasharray="4 3"
-                  />
+                  {(() => {
+                    const p1: [number, number] = [drawDraft.x1, drawDraft.y1]
+                    const p2: [number, number] = [drawDraft.x2, drawDraft.y2]
+                    const common = { stroke: '#374151', strokeWidth: 2, strokeDasharray: '4 3', fill: 'none' } as const
+                    if (drawMode === 'elbow') {
+                      const { frame, points } = elbowFromDrag(p1, p2)
+                      const abs = absPointsOf(frame, points)
+                      return <polyline points={abs.map(([x, y]) => `${x},${y}`).join(' ')} {...common} />
+                    }
+                    if (drawMode === 'curve') {
+                      const { frame, points } = curveFromDrag(p1, p2)
+                      const [a, b, c, d] = absPointsOf(frame, points)
+                      if (!a || !b || !c || !d) return null
+                      return <path d={`M ${a[0]},${a[1]} C ${b[0]},${b[1]} ${c[0]},${c[1]} ${d[0]},${d[1]}`} {...common} />
+                    }
+                    return <line x1={p1[0]} y1={p1[1]} x2={p2[0]} y2={p2[1]} {...common} />
+                  })()}
                 </svg>
               )}
             </div>

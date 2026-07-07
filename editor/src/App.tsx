@@ -15,6 +15,7 @@ import { addSlide, duplicateSlide, moveSlide, removeSlide } from './model/ops.ts
 import { checkRoundTrip } from './model/roundtrip.ts'
 import { normalizeRuntime } from './model/runtime.ts'
 import { serializeWebdeck } from './model/serialize.ts'
+import type { StrokeKind } from './model/shapeSvg.ts'
 import type { DeckDoc } from './model/types.ts'
 import { StartScreen } from './panels/StartScreen.tsx'
 import { PropertiesPanel } from './panels/PropertiesPanel.tsx'
@@ -34,7 +35,7 @@ export function App() {
   const [docFile, setDocFile] = useState<{ seq: number; file: DocModeFile } | null>(null)
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(listCustomTemplates)
   const [tableSel, setTableSel] = useState<TableSel | null>(null)
-  const [drawMode, setDrawMode] = useState<'line' | 'arrow' | null>(null)
+  const [drawMode, setDrawMode] = useState<StrokeKind | null>(null)
   const docSeqRef = useRef(0)
   const idGenRef = useRef(createIdGen('n'))
   useShortcuts(state, dispatch, idGenRef.current, handleSave, handleSaveAs, docFile === null)
