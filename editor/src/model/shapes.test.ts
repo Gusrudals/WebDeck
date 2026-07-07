@@ -4,7 +4,7 @@ import { addElement, createShape } from './ops.ts'
 import { parseWebdeck } from './parse.ts'
 import { checkRoundTrip } from './roundtrip.ts'
 import { serializeWebdeck } from './serialize.ts'
-import { isLinear, lineDefaults, shapeInnerHtml } from './shapeSvg.ts'
+import { isLinear, isPath, isStroke, lineDefaults, pathInnerHtml, shapeInnerHtml } from './shapeSvg.ts'
 import type { DeckDoc, ShapeElement } from './types.ts'
 
 const WRAP = (inner: string) => `<!DOCTYPE html>
@@ -183,5 +183,80 @@ describe('선 서식 — 파서 승격/직렬화 (Plan 9c)', () => {
   })
   test('서식 조합 왕복 동등 (checkRoundTrip)', () => {
     expect(checkRoundTrip(docOf(' data-stroke-width="6" data-stroke-dash="dotted" data-head-start="1" data-head-end="1"', 'arrow'))).toBeNull()
+  })
+})
+
+describe('경유점 도형 — 정준 SVG (Plan 9d)', () => {
+  test('elbow: %→px 환산 polyline + fill none', () => {
+    const html = pathInnerHtml('elbow', 'x', lineDefaults('elbow'), [[0, 0], [50, 0], [50, 100], [100, 100]], 320, 160)
+    expect(html).toContain('<polyline points="0,0 160,0 160,160 320,160" fill="none" stroke="currentColor" stroke-width="2"')
+    expect(html).not.toContain('<defs>')
+  })
+  test('curve: 4점 베지어 path + px 소수 2자리 반올림', () => {
+    const html = pathInnerHtml('curve', 'x', lineDefaults('curve'), [[0, 100], [33.33, 0], [66.67, 0], [100, 100]], 300, 100)
+    expect(html).toContain('<path d="M 0,100 C 99.99,0 200.01,0 300,100" fill="none"')
+  })
+  test('elbow의 대시·머리는 9c 정준식·marker 규격 공유', () => {
+    const html = pathInnerHtml('elbow', 'abc', { strokeWidth: 4, strokeDash: 'dashed', headStart: false, headEnd: true }, [[0, 0], [100, 0]], 100, 8)
+    expect(html).toContain('stroke-dasharray="12 8"')
+    expect(html).toContain('markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto-start-reverse" markerUnits="strokeWidth"')
+    expect(html).toContain('marker-end="url(#wd-arrow-head-abc)"')
+  })
+  test('line 정준 출력은 바이트 불변 (헬퍼 추출 회귀)', () => {
+    expect(shapeInnerHtml('x', lineDefaults('line'))).toBe(
+      '<svg width="100%" height="100%" style="overflow: visible; display: block;"><line x1="0" y1="50%" x2="100%" y2="50%" stroke="currentColor" stroke-width="2"></line></svg>',
+    )
+  })
+  test('판별자: isStroke 4종·isPath 2종·lineDefaults elbow/curve 기본', () => {
+    expect(isStroke('elbow') && isStroke('curve') && isStroke('line') && isStroke('arrow')).toBe(true)
+    expect(isStroke('rect')).toBe(false)
+    expect(isPath('elbow') && isPath('curve')).toBe(true)
+    expect(isPath('line')).toBe(false)
+    expect(lineDefaults('elbow')).toEqual({ strokeWidth: 2, strokeDash: 'solid', headStart: false, headEnd: false })
+  })
+})
+
+describe('경유점 도형 — 파서/직렬화 (Plan 9d)', () => {
+  const docOf = (kind: string, attrs: string) =>
+    parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide"><div class="el el-shape" data-shape="${kind}"${attrs} style="left:0px; top:0px; width:320px; height:160px;"></div></section>
+</main></body></html>`)
+  const first = (doc: DeckDoc) => doc.slides[0]!.elements[0]!
+
+  test('elbow: data-points 승격 + 선 서식 병행', () => {
+    const el = first(docOf('elbow', ' data-points="0,0 50,0 50,100 100,100" data-stroke-dash="dotted"')) as ShapeElement
+    expect(el.type).toBe('shape')
+    expect(el.points).toEqual([[0, 0], [50, 0], [50, 100], [100, 100]])
+    expect(el.strokeDash).toBe('dotted')
+    expect(el.extraAttrs).toEqual({})
+  })
+  test('opaque 강등: 부재·형식 오류·개수 위반', () => {
+    expect(first(docOf('elbow', '')).type).toBe('opaque')
+    expect(first(docOf('elbow', ' data-points="0,0 abc,5"')).type).toBe('opaque')
+    expect(first(docOf('elbow', ' data-points="0,0"')).type).toBe('opaque')
+    expect(first(docOf('curve', ' data-points="0,0 50,0 100,100"')).type).toBe('opaque')
+  })
+  test('% 밖 좌표·비직교는 수용 (관용)', () => {
+    const el = first(docOf('curve', ' data-points="0,100 33,-25 67,-25 100,100"')) as ShapeElement
+    expect(el.type).toBe('shape')
+    expect(el.points[1]).toEqual([33, -25])
+    expect((first(docOf('elbow', ' data-points="0,0 70,30"')) as ShapeElement).type).toBe('shape')
+  })
+  test('직렬화: data-points 소수 2자리 + 왕복 동등', () => {
+    const doc = docOf('curve', ' data-points="0,100 33.333,0 66.667,0 100,100" data-head-end="1"')
+    const html = serializeWebdeck(doc)
+    expect(html).toContain('data-points="0,100 33.33,0 66.67,0 100,100"')
+    expect(html).toContain('data-head-end="1"')
+    expect(html).toContain('<path d=')
+    expect(checkRoundTrip(doc)).toBeNull()
+  })
+  test('createShape: elbow/curve 기본 points·색', () => {
+    const el = createShape(() => 'e1', 'elbow', { left: 0, top: 0, width: 100, height: 100 })
+    expect(el.points).toEqual([[0, 0], [50, 0], [50, 100], [100, 100]])
+    expect(el.extraStyle['color']).toBe('#374151')
+    expect(createShape(() => 'r1', 'rect', { left: 0, top: 0, width: 10, height: 10 }).points).toEqual([])
   })
 })

@@ -31,18 +31,23 @@ export interface ImageElement extends ElementBase {
   imgStyle: string
 }
 
-export type ShapeKind = 'rect' | 'ellipse' | 'rounded' | 'line' | 'arrow'
+export type ShapeKind = 'rect' | 'ellipse' | 'rounded' | 'line' | 'arrow' | 'elbow' | 'curve'
 
 export type StrokeDash = 'solid' | 'dashed' | 'dotted'
+
+/** 경유점 % 좌표 (frame 기준, 0~100 밖 허용) */
+export type Point = [number, number]
 
 export interface ShapeElement extends ElementBase {
   type: 'shape'
   shape: ShapeKind
-  /** 선 서식 — line/arrow에서만 의미(스펙 §2). 그 외 kind는 기본값 고정·직렬화 미출력 */
+  /** 선 서식 — line/arrow/elbow/curve에서만 의미(스펙 §2). 그 외 kind는 기본값 고정·직렬화 미출력 */
   strokeWidth: number
   strokeDash: StrokeDash
   headStart: boolean
   headEnd: boolean
+  /** 경유점 — elbow(≥2)/curve(정확 4)에서만 의미, 그 외 kind는 [] (스펙 9d §2) */
+  points: Point[]
 }
 
 export type CellAlign = 'left' | 'center' | 'right'

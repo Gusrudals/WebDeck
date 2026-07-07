@@ -1,7 +1,7 @@
 import { normalizeAngle } from './rotation.ts'
-import { isLinear, lineDefaults } from './shapeSvg.ts'
+import { isLinear, isPath, isStroke, lineDefaults } from './shapeSvg.ts'
 import type { LineStyle } from './shapeSvg.ts'
-import type { DeckDoc, Frame, ImageElement, KnownElement, ShapeElement, ShapeKind, Slide, SlideElement, TextElement } from './types.ts'
+import type { DeckDoc, Frame, ImageElement, KnownElement, Point, ShapeElement, ShapeKind, Slide, SlideElement, TextElement } from './types.ts'
 import { isKnownElement } from './types.ts'
 
 // ---------- 내부 헬퍼 ----------
@@ -187,18 +187,27 @@ export function createShapeElement(idGen: () => string, frame: Frame, background
 /** line/arrow 삽입 기본 frame — 툴바 클릭 삽입과 그리기 모드의 클릭 폴백이 공유 (스펙 §5) */
 export const LINEAR_INSERT_FRAME: Frame = { left: 480, top: 356, width: 320, height: 8 }
 
+/** elbow/curve 삽입 기본 frame — 그리기 모드의 클릭 폴백이 사용 (스펙 9d §4) */
+export const PATH_INSERT_FRAME: Frame = { left: 480, top: 280, width: 320, height: 160 }
+
+const DEFAULT_PATH_POINTS: Record<'elbow' | 'curve', Point[]> = {
+  elbow: [[0, 0], [50, 0], [50, 100], [100, 100]],
+  curve: [[0, 100], [33.33, 0], [66.67, 0], [100, 100]],
+}
+
 /** 도형 삽입 팩토리 — kind별 기본 외형은 인라인 스타일에 내장 (런타임·CSS 무의존, 스펙 §2·§3) */
 export function createShape(idGen: () => string, kind: ShapeKind, frame: Frame): ShapeElement {
   const extraStyle: Record<string, string> =
-    kind === 'line' || kind === 'arrow'
+    isStroke(kind)
       ? { color: '#374151' }
       : kind === 'ellipse'
         ? { background: 'var(--wd-accent)', 'border-radius': '50%' }
         : kind === 'rounded'
           ? { background: 'var(--wd-accent)', 'border-radius': '24px' }
           : { background: 'var(--wd-accent)' }
-  const line = isLinear(kind) ? lineDefaults(kind as 'line' | 'arrow') : lineDefaults('line')
-  return { type: 'shape', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle, extraAttrs: {}, extraClasses: [], shape: kind, ...line }
+  const line = isStroke(kind) ? lineDefaults(kind) : lineDefaults('line')
+  const points: Point[] = isPath(kind) ? DEFAULT_PATH_POINTS[kind].map(([x, y]) => [x, y] as Point) : []
+  return { type: 'shape', id: idGen(), frame: { ...frame }, rotation: 0, extraStyle, extraAttrs: {}, extraClasses: [], shape: kind, ...line, points }
 }
 
 export function createImageElement(idGen: () => string, frame: Frame, src: string, alt: string): ImageElement {

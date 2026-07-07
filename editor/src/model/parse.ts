@@ -1,10 +1,10 @@
 import { createIdGen } from './id.ts'
 import { ROTATE_PATTERN, normalizeAngle } from './rotation.ts'
-import { isLinear, lineDefaults } from './shapeSvg.ts'
-import type { LineStyle } from './shapeSvg.ts'
+import { isPath, isStroke, lineDefaults } from './shapeSvg.ts'
+import type { LineStyle, StrokeKind } from './shapeSvg.ts'
 import { parseInlineStyle } from './style.ts'
 import { parseTableMarkup } from './tableMarkup.ts'
-import type { DeckDoc, Frame, Slide, SlideElement } from './types.ts'
+import type { DeckDoc, Frame, Point, Slide, SlideElement } from './types.ts'
 
 export class WebdeckParseError extends Error {}
 
@@ -14,7 +14,7 @@ export interface ParseOptions {
 
 const FRAME_PROPS = ['left', 'top', 'width', 'height'] as const
 const PX_VALUE = /^-?\d+(\.\d+)?px$/
-const SHAPE_KINDS = ['rect', 'ellipse', 'rounded', 'line', 'arrow'] as const
+const SHAPE_KINDS = ['rect', 'ellipse', 'rounded', 'line', 'arrow', 'elbow', 'curve'] as const
 
 /** class 속성에서 known 토큰을 제외한 나머지를 원문 순서대로 반환 */
 function extraClassesOf(el: Element, known: string[]): string[] {
@@ -160,22 +160,50 @@ function parseElement(el: Element, idGen: () => string): SlideElement {
   if (el.classList.contains('el-shape')) {
     const kind = el.getAttribute('data-shape') as (typeof SHAPE_KINDS)[number] | null
     if (kind === null || !SHAPE_KINDS.includes(kind)) return opaque()
-    if (!isLinear(kind)) {
+    if (!isStroke(kind)) {
       const hasChildren = el.children.length > 0
       const hasText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim() !== '')
       if (hasChildren || hasText) return opaque()
-      return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...lineDefaults('line') }
+      return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...lineDefaults('line'), points: [] }
+    }
+    if (isPath(kind)) {
+      const points = readPoints(el)
+      // points는 형상 그 자체라 기본값이 없다 — 위반 시 opaque 보존 (스펙 9d §2)
+      if (points === null || points.length < 2 || (kind === 'curve' && points.length !== 4)) return opaque()
+      delete extraAttrs['data-points']
+      return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...readLineStyle(el, kind, extraAttrs), points }
     }
     // line/arrow는 내부 마크업을 무시한다 — 직렬화가 정준 SVG를 재생성 (스펙 §3)
-    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...readLineStyle(el, kind as 'line' | 'arrow', extraAttrs) }
+    return { type: 'shape', id, frame, rotation, extraStyle, extraAttrs, extraClasses, shape: kind, ...readLineStyle(el, kind, extraAttrs), points: [] }
   }
   return opaque()
+}
+
+/**
+ * data-points 파싱 — 형식 위반이면 null (호출부가 opaque 강등, 스펙 9d §2).
+ * 좌표를 소수 2자리로 정준화한다 — 직렬화가 2자리로 출력하므로(serialize fmt), 파서도
+ * 같은 정밀도로 맞추지 않으면 3자리 이상 좌표를 가진 AI 문서가 checkRoundTrip(모델 동등성)에
+ * 걸려 편집 없이도 저장이 차단된다. round2는 멱등이라 파서·직렬화가 이후 항상 일치한다.
+ */
+function readPoints(el: Element): Point[] | null {
+  const raw = el.getAttribute('data-points')
+  if (raw === null || raw.trim() === '') return null
+  const pts: Point[] = []
+  for (const pair of raw.trim().split(/\s+/)) {
+    const xy = pair.split(',')
+    if (xy.length !== 2) return null
+    const x = Number(xy[0])
+    const y = Number(xy[1])
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+    pts.push([Math.round(x * 100) / 100, Math.round(y * 100) / 100])
+  }
+  return pts
 }
 
 const LINE_STYLE_ATTRS = ['data-stroke-width', 'data-stroke-dash', 'data-head-start', 'data-head-end']
 
 /** 선 서식 속성 승격 — 유효한 값만, 무효 값은 kind 기본값(관용, 스펙 §7). extraAttrs에서 소비한다 */
-function readLineStyle(el: Element, kind: 'line' | 'arrow', extraAttrs: Record<string, string>): LineStyle {
+function readLineStyle(el: Element, kind: StrokeKind, extraAttrs: Record<string, string>): LineStyle {
   const d = lineDefaults(kind)
   const w = el.getAttribute('data-stroke-width')
   const dash = el.getAttribute('data-stroke-dash')

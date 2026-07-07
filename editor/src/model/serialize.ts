@@ -1,4 +1,4 @@
-import { isLinear, lineDefaults, lineStyleOf, shapeInnerHtml } from './shapeSvg.ts'
+import { isPath, isStroke, lineDefaults, lineStyleOf, pathInnerHtml, shapeInnerHtml } from './shapeSvg.ts'
 import { serializeInlineStyle } from './style.ts'
 import { serializeTableInner } from './tableMarkup.ts'
 import type { DeckDoc, KnownElement, Slide, SlideElement } from './types.ts'
@@ -67,14 +67,19 @@ function serializeElement(el: SlideElement): string {
     case 'shape': {
       let lineAttrs = ''
       let inner = ''
-      if (isLinear(el.shape)) {
-        const kind = el.shape as 'line' | 'arrow'
-        const d = lineDefaults(kind)
+      if (isStroke(el.shape)) {
+        const d = lineDefaults(el.shape)
         if (el.strokeWidth !== d.strokeWidth) lineAttrs += ` data-stroke-width="${el.strokeWidth}"`
         if (el.strokeDash !== d.strokeDash) lineAttrs += ` data-stroke-dash="${el.strokeDash}"`
         if (el.headStart !== d.headStart) lineAttrs += ` data-head-start="${el.headStart ? '1' : '0'}"`
         if (el.headEnd !== d.headEnd) lineAttrs += ` data-head-end="${el.headEnd ? '1' : '0'}"`
-        inner = shapeInnerHtml(el.id, lineStyleOf(el))
+        if (isPath(el.shape)) {
+          const fmt = (v: number) => String(Math.round(v * 100) / 100)
+          lineAttrs += ` data-points="${el.points.map(([x, y]) => `${fmt(x)},${fmt(y)}`).join(' ')}"`
+          inner = pathInnerHtml(el.shape, el.id, lineStyleOf(el), el.points, el.frame.width, el.frame.height)
+        } else {
+          inner = shapeInnerHtml(el.id, lineStyleOf(el))
+        }
       }
       return `<div class="${escapeAttr(elementClass(el))}" data-shape="${el.shape}"${lineAttrs} style="${escapeAttr(style)}"${attrs}>${inner}</div>`
     }

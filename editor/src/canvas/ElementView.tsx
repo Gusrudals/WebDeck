@@ -1,5 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import { isLinear, lineStyleOf, shapeInnerHtml } from '../model/shapeSvg.ts'
+import { isLinear, isPath, lineStyleOf, pathInnerHtml, shapeInnerHtml } from '../model/shapeSvg.ts'
 import type { SlideElement } from '../model/types.ts'
 import { cssTextToReact, styleFromModel } from './styleFromModel.ts'
 import { TableView } from './TableView.tsx'
@@ -46,6 +46,18 @@ export function ElementView({ element, interaction }: { element: SlideElement; i
     case 'table':
       return <TableView element={element} elementHandlers={handlers} table={interaction?.table} />
     case 'shape':
+      if (isPath(element.shape)) {
+        return (
+          <div
+            className="el el-shape"
+            style={styleFromModel(element.frame, element.extraStyle, element.rotation)}
+            dangerouslySetInnerHTML={{
+              __html: pathInnerHtml(element.shape, element.id, lineStyleOf(element), element.points, element.frame.width, element.frame.height),
+            }}
+            {...handlers}
+          />
+        )
+      }
       if (isLinear(element.shape)) {
         return (
           <div
