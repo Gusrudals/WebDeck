@@ -146,3 +146,6 @@ body { margin: 0; font-family: var(--wd-font-body); color: #1f2937; background: 
 .cell-selected { outline: 2px solid var(--wd-primary, #1a56db); outline-offset: -2px; }
 .col-resize-handle { position: absolute; top: 0; bottom: 0; width: 7px; margin-left: -3px; cursor: col-resize; z-index: 5; }
 .col-resize-handle:hover { background: rgba(26, 86, 219, 0.25); }
+
+/* 속성 패널 토글 버튼 눌림 표시 (선 스타일·화살표 머리 등) */
+.props [aria-pressed="true"] { background: #dbeafe; border-color: #93c5fd; }

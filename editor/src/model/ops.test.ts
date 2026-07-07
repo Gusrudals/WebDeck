@@ -3,6 +3,7 @@ import { createIdGen } from './id.ts'
 import {
   addElement,
   addSlide,
+  createShape,
   createShapeElement,
   createTextElement,
   duplicateSlide,
@@ -14,6 +15,7 @@ import {
   setElementFrame,
   setElementRotation,
   setElementStyle,
+  setShapeLineStyle,
   setSlideNotes,
   setSlideTransition,
   setSlideBg,
@@ -22,7 +24,7 @@ import {
 import { parseWebdeck } from './parse.ts'
 import { checkRoundTrip } from './roundtrip.ts'
 import { serializeWebdeck } from './serialize.ts'
-import type { DeckDoc, Slide } from './types.ts'
+import type { DeckDoc, ShapeElement, Slide } from './types.ts'
 
 function fixture(): DeckDoc {
   const gen = createIdGen()
@@ -82,6 +84,21 @@ describe('요소 커맨드', () => {
     expect(ids(moveElementZ(doc, 'wd-1', 'wd-2', 'front'))).toEqual(['wd-3', 'wd-4', 'wd-2'])
     expect(ids(moveElementZ(doc, 'wd-1', 'wd-2', 'backward'))).toEqual(ids(doc)) // 이미 맨 뒤
     expect(moveElementZ(doc, 'wd-1', 'wd-2', 'backward')).toBe(doc) // 경계 no-op은 같은 참조
+  })
+
+  test('setShapeLineStyle은 line/arrow의 서식만 패치한다', () => {
+    const doc = fixture()
+    const gen = createIdGen('ln')
+    const line = createShape(gen, 'line', { left: 0, top: 0, width: 320, height: 8 })
+    const withLine = addElement(doc, 'wd-1', line)
+    const next = setShapeLineStyle(withLine, 'wd-1', line.id, { strokeWidth: 6, headStart: true })
+    const patched = next.slides[0]!.elements.find((e) => e.id === line.id) as ShapeElement
+    expect(patched.strokeWidth).toBe(6)
+    expect(patched.headStart).toBe(true)
+    expect(patched.strokeDash).toBe('solid')
+    // wd-2는 fixture()의 rect 요소 — line/arrow가 아니므로 무변경
+    const same = setShapeLineStyle(withLine, 'wd-1', 'wd-2', { strokeWidth: 6 })
+    expect((same.slides[0]!.elements.find((e) => e.id === 'wd-2') as ShapeElement).strokeWidth).toBe(2)
   })
 })
 

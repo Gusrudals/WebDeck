@@ -3,13 +3,14 @@ import type { Dispatch } from 'react'
 import type { TableSel } from '../App.tsx'
 import { MIN_SIZE } from '../canvas/geometry.ts'
 import { createIdGen } from '../model/id.ts'
-import { setElementFrame, setElementRotation, setElementStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
+import { setElementFrame, setElementRotation, setElementStyle, setShapeLineStyle, setSlideNotes, setSlideTransition } from '../model/ops.ts'
 import { normalizeAngle } from '../model/rotation.ts'
 import { isLinear } from '../model/shapeSvg.ts'
+import type { LineStyle } from '../model/shapeSvg.ts'
 import { convertibleOpaqueTableCount, convertOpaqueTables } from '../model/tableOps.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction, EditorState } from '../state/store.ts'
-import type { Frame, TableElement } from '../model/types.ts'
+import type { Frame, ShapeElement, TableElement } from '../model/types.ts'
 import { ColorPopover } from './ColorPopover.tsx'
 import { SlideBgSection } from './SlideBgSection.tsx'
 import { TableSection } from './TableSection.tsx'
@@ -174,6 +175,49 @@ export function PropertiesPanel({
       {selectedKnown.length === 1 && selectedKnown[0]!.type === 'table' && (
         <TableSection doc={doc} slide={slide} el={selectedKnown[0]! as TableElement} sel={tableSel ?? null} dispatch={dispatch} />
       )}
+      {allLinear && (() => {
+        const shapes = selectedKnown.filter((el): el is ShapeElement => el.type === 'shape')
+        const firstShape = shapes[0]!
+        const applyLine = (patch: Partial<LineStyle>) => {
+          const changed = shapes.some(
+            (el) =>
+              (patch.strokeWidth !== undefined && el.strokeWidth !== patch.strokeWidth) ||
+              (patch.strokeDash !== undefined && el.strokeDash !== patch.strokeDash) ||
+              (patch.headStart !== undefined && el.headStart !== patch.headStart) ||
+              (patch.headEnd !== undefined && el.headEnd !== patch.headEnd),
+          )
+          if (!changed) return
+          let d = doc
+          for (const el of shapes) d = setShapeLineStyle(d, slide.id, el.id, patch)
+          dispatch({ type: 'APPLY_DOC', doc: d })
+        }
+        return (
+          <section aria-label="선">
+            <h2>선</h2>
+            <NumberField
+              key={`${firstShape.id}-sw`}
+              label="굵기"
+              value={firstShape.strokeWidth}
+              onCommit={(v) => applyLine({ strokeWidth: Math.min(24, Math.max(1, Math.round(v))) })}
+            />
+            <div className="prop-row">
+              선 스타일
+              <span className="btn-row">
+                <button type="button" aria-label="실선" aria-pressed={firstShape.strokeDash === 'solid'} onClick={() => applyLine({ strokeDash: 'solid' })}>실선</button>
+                <button type="button" aria-label="파선" aria-pressed={firstShape.strokeDash === 'dashed'} onClick={() => applyLine({ strokeDash: 'dashed' })}>파선</button>
+                <button type="button" aria-label="점선" aria-pressed={firstShape.strokeDash === 'dotted'} onClick={() => applyLine({ strokeDash: 'dotted' })}>점선</button>
+              </span>
+            </div>
+            <div className="prop-row">
+              화살표 머리
+              <span className="btn-row">
+                <button type="button" aria-label="시작 머리" aria-pressed={firstShape.headStart} onClick={() => applyLine({ headStart: !firstShape.headStart })}>시작 머리</button>
+                <button type="button" aria-label="끝 머리" aria-pressed={firstShape.headEnd} onClick={() => applyLine({ headEnd: !firstShape.headEnd })}>끝 머리</button>
+              </span>
+            </div>
+          </section>
+        )
+      })()}
       {first && (
         <section aria-label="스타일">
           <div className="prop-row">

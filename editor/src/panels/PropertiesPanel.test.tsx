@@ -35,11 +35,21 @@ const DOC_LINE = parseWebdeck(`<!DOCTYPE html>
 </section>
 </main></body></html>`)
 
+const DOC_ARROW = parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">
+<div class="el el-shape" data-shape="arrow" style="left:10px; top:10px; width:320px; height:8px; color:#374151;"></div>
+</section>
+</main></body></html>`)
+
 const EL_TEXT = DOC.slides[0]!.elements[0]!.id
 const EL_SHAPE = DOC.slides[0]!.elements[1]!.id
 const EL_BORDERED = DOC_STYLED.slides[0]!.elements[0]!.id
 const EL_CUSTOM_BORDER = DOC_STYLED.slides[0]!.elements[1]!.id
 const EL_LINE = DOC_LINE.slides[0]!.elements[0]!.id
+const EL_ARROW = DOC_ARROW.slides[0]!.elements[0]!.id
 
 function makeState(over: Partial<EditorState> = {}): EditorState {
   const opened = editorReducer(initialEditorState, {
@@ -65,6 +75,11 @@ function appliedDoc(dispatch: ReturnType<typeof vi.fn>): DeckDoc | null {
 /** line 요소 단일 선택 픽스처 */
 function renderLinePanel(over: Partial<EditorState> = {}) {
   return renderPanel({ doc: DOC_LINE, selectedIds: [EL_LINE], ...over })
+}
+
+/** arrow 요소 단일 선택 픽스처 */
+function renderArrowPanel(over: Partial<EditorState> = {}) {
+  return renderPanel({ doc: DOC_ARROW, selectedIds: [EL_ARROW], ...over })
 }
 
 test('선택이 없으면 슬라이드 모드 — 배경색 입력을 보여준다', () => {
@@ -239,6 +254,54 @@ test('선 요소 선택 시 채우기 없음도 color 키를 제거한다', () =
   const doc = appliedDoc(dispatch)!
   const el = doc.slides[0]!.elements[0]!
   expect(el.type !== 'opaque' && 'color' in el.extraStyle).toBe(false)
+})
+
+test('line 단일 선택이면 선 섹션이 보인다', () => {
+  const { getByText, getByLabelText } = renderLinePanel()
+  expect(getByText('선')).toBeTruthy()
+  expect(getByLabelText('굵기')).toBeTruthy()
+  expect(getByLabelText('파선')).toBeTruthy()
+})
+
+test('rect 단일 선택이면 선 섹션이 없다', () => {
+  const { queryByLabelText } = renderPanel({ selectedIds: [EL_SHAPE] })
+  expect(queryByLabelText('파선')).toBeNull()
+})
+
+test('파선 클릭은 strokeDash를 패치한 APPLY_DOC 1회', () => {
+  const { dispatch, getByLabelText } = renderLinePanel()
+  fireEvent.click(getByLabelText('파선'))
+  const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+  expect(applies).toHaveLength(1)
+  const doc = applies[0]![0].doc as DeckDoc
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type === 'shape' && el.strokeDash).toBe('dashed')
+})
+
+test('현재 값과 같은 버튼 클릭은 dispatch하지 않는다', () => {
+  const { dispatch, getByLabelText } = renderLinePanel()
+  fireEvent.click(getByLabelText('실선'))
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+test('굵기 커밋은 1~24 정수로 클램프', () => {
+  const { dispatch, getByLabelText } = renderLinePanel()
+  const input = getByLabelText('굵기')
+  fireEvent.change(input, { target: { value: '99' } })
+  fireEvent.blur(input)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type === 'shape' && el.strokeWidth).toBe(24)
+})
+
+test('arrow의 끝 머리 토글: aria-pressed true → 클릭 → headEnd false', () => {
+  const { dispatch, getByLabelText } = renderArrowPanel()
+  const btn = getByLabelText('끝 머리')
+  expect(btn.getAttribute('aria-pressed')).toBe('true')
+  fireEvent.click(btn)
+  const doc = appliedDoc(dispatch)!
+  const el = doc.slides[0]!.elements[0]!
+  expect(el.type === 'shape' && el.headEnd).toBe(false)
 })
 
 test('혼합 선택(선+상자)이면 채우기는 기존대로 background를 패치한다', () => {
