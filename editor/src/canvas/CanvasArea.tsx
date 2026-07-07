@@ -1,17 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, PointerEvent as ReactPointerEvent } from 'react'
 import type { TableSel } from '../App.tsx'
-import { LINEAR_INSERT_FRAME, PATH_INSERT_FRAME, addElement, createShape, moveElement, setElementFrame, setElementRotation, setTextHtml } from '../model/ops.ts'
-import { absPointsOf, curveFromDrag, elbowFromDrag, lineFromEndpoints } from '../model/pathOps.ts'
-import { isPath } from '../model/shapeSvg.ts'
+import { LINEAR_INSERT_FRAME, PATH_INSERT_FRAME, addElement, createShape, moveElement, setElementFrame, setElementRotation, setShapePoints, setTextHtml } from '../model/ops.ts'
+import {
+  absPointsOf,
+  curveFromDrag,
+  elbowFromDrag,
+  lineFromEndpoints,
+  moveElbowEndpoint,
+  moveElbowSegment,
+  normalizePoints,
+  segmentAxis,
+} from '../model/pathOps.ts'
+import { isLinear, isPath, isStroke } from '../model/shapeSvg.ts'
 import type { StrokeKind } from '../model/shapeSvg.ts'
 import { flattenAnchors, insertRow, setCellHtml, setColWidths } from '../model/tableOps.ts'
-import type { DeckDoc, Frame, TableElement } from '../model/types.ts'
+import type { DeckDoc, Frame, Point, ShapeElement, TableElement } from '../model/types.ts'
 import { isKnownElement } from '../model/types.ts'
 import type { EditorAction } from '../state/store.ts'
 import { angleFromCenter, buildSnapTargets, resizeFrame, snapAngle, snapMove, snapResize } from './geometry.ts'
 import type { Guide, ResizeHandle, SnapTargets } from './geometry.ts'
 import { SelectionOverlay } from './SelectionOverlay.tsx'
+import type { PointHandleSpec, PointsInteraction } from './SelectionOverlay.tsx'
 import { SlideView } from './SlideView.tsx'
 import { extractThemeVars } from './styleFromModel.ts'
 import type { TableInteraction } from './TableView.tsx'
@@ -57,7 +67,25 @@ interface ColResizeGesture {
   resized: boolean
 }
 
-type Gesture = MoveGesture | ResizeGesture | RotateGesture | ColResizeGesture
+interface PointsGesture {
+  kind: 'points'
+  slideId: string
+  id: string
+  frame: Frame
+  points: Point[]
+  changed: boolean
+}
+
+interface LineEndGesture {
+  kind: 'lineend'
+  slideId: string
+  id: string
+  frame: Frame
+  rotation: number
+  changed: boolean
+}
+
+type Gesture = MoveGesture | ResizeGesture | RotateGesture | ColResizeGesture | PointsGesture | LineEndGesture
 
 export interface CanvasAreaProps {
   doc: DeckDoc
@@ -174,6 +202,14 @@ export function CanvasArea({
     if (gesture.kind === 'colresize') {
       if (!gesture.resized) return doc
       return setColWidths(doc, gesture.slideId, gesture.id, gesture.widths)
+    }
+    if (gesture.kind === 'points') {
+      if (!gesture.changed) return doc
+      return setShapePoints(doc, gesture.slideId, gesture.id, gesture.frame, gesture.points)
+    }
+    if (gesture.kind === 'lineend') {
+      if (!gesture.changed) return doc
+      return setElementRotation(setElementFrame(doc, gesture.slideId, gesture.id, gesture.frame), gesture.slideId, gesture.id, gesture.rotation)
     }
     if (!gesture.resized) return doc
     return setElementFrame(doc, gesture.slideId, gesture.id, gesture.frame)
@@ -395,6 +431,108 @@ export function CanvasArea({
     window.addEventListener('pointercancel', onCancel)
   }
 
+  // 선언 순서 주의(TDZ): 아래 pointsInteraction IIFE(strokeSel 계산부 근처)가 beginPointDrag를
+  // 즉시 참조하므로 toDocPoint·attachDrag·beginPointDrag는 그 계산보다 텍스트상 먼저 와야 한다.
+  // 순서를 지키지 않으면 const TDZ로 인해 stroke 도형 선택 시 렌더 중 크래시한다 (Plan 9d Task 5).
+  const toDocPoint = (ev: { clientX: number; clientY: number }): [number, number] => {
+    const stage = ref.current?.querySelector('.slide-stage')
+    const rect = stage?.getBoundingClientRect() ?? { left: 0, top: 0 }
+    return [(ev.clientX - rect.left) / scaleRef.current, (ev.clientY - rect.top) / scaleRef.current]
+  }
+
+  const attachDrag = (onMove: (ev: PointerEvent) => void, onEnd: () => void) => {
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      onEnd()
+    }
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      setGesture(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }
+
+  const beginPointDrag = (e: ReactPointerEvent, key: string) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const el = strokeSel
+    if (!el) return
+    const docAtStart = doc
+    if (!isPath(el.shape)) {
+      // line/arrow 끝점: 반대 끝 고정, frame+rotation 재계산 (9c 수학 = lineFromEndpoints)
+      const cx = el.frame.left + el.frame.width / 2
+      const cy = el.frame.top + el.frame.height / 2
+      const rad = (el.rotation * Math.PI) / 180
+      const hx = (el.frame.width / 2) * Math.cos(rad)
+      const hy = (el.frame.width / 2) * Math.sin(rad)
+      const movingStart = key === 'pt-0'
+      const fixed: [number, number] = movingStart ? [cx + hx, cy + hy] : [cx - hx, cy - hy]
+      const g: LineEndGesture = { kind: 'lineend', slideId: slide.id, id: el.id, frame: el.frame, rotation: el.rotation, changed: false }
+      const onMove = (ev: PointerEvent) => {
+        let [mx, my] = toDocPoint(ev)
+        if (ev.shiftKey) {
+          const dist = Math.hypot(mx - fixed[0], my - fixed[1])
+          const snapped = ((Math.round((Math.atan2(my - fixed[1], mx - fixed[0]) * 180) / Math.PI / 15) * 15) * Math.PI) / 180
+          mx = fixed[0] + dist * Math.cos(snapped)
+          my = fixed[1] + dist * Math.sin(snapped)
+        }
+        const moving: [number, number] = [mx, my]
+        const { frame, rotation } = movingStart
+          ? lineFromEndpoints(moving, fixed, el.frame.height)
+          : lineFromEndpoints(fixed, moving, el.frame.height)
+        g.frame = frame
+        g.rotation = rotation
+        g.changed = true
+        setGesture({ ...g })
+      }
+      attachDrag(onMove, () => {
+        if (g.changed) {
+          dispatch({
+            type: 'APPLY_DOC',
+            doc: setElementRotation(setElementFrame(docAtStart, g.slideId, g.id, g.frame), g.slideId, g.id, g.rotation),
+          })
+        }
+        setGesture(null)
+      })
+      return
+    }
+    const absStart = absPointsOf(el.frame, el.points)
+    const startPointer = toDocPoint(e.nativeEvent)
+    const g: PointsGesture = { kind: 'points', slideId: slide.id, id: el.id, frame: el.frame, points: el.points, changed: false }
+    const onMove = (ev: PointerEvent) => {
+      const [mx, my] = toDocPoint(ev)
+      let abs = absStart
+      if (key === 'pt-0' || key === `pt-${absStart.length - 1}`) {
+        if (el.shape === 'elbow') {
+          abs = moveElbowEndpoint(absStart, key === 'pt-0' ? 'start' : 'end', [mx, my])
+        } else {
+          abs = absStart.map((p, i) => (i === (key === 'pt-0' ? 0 : absStart.length - 1) ? [mx, my] as [number, number] : p))
+        }
+      } else if (key.startsWith('pt-')) {
+        const idx = Number(key.slice(3))
+        abs = absStart.map((p, i) => (i === idx ? [mx, my] as [number, number] : p))
+      } else {
+        const seg = Number(key.slice(4))
+        abs = moveElbowSegment(absStart, seg, mx - startPointer[0], my - startPointer[1])
+      }
+      const norm = normalizePoints(abs)
+      g.frame = norm.frame
+      g.points = norm.points
+      g.changed = true
+      setGesture({ ...g })
+    }
+    attachDrag(onMove, () => {
+      if (g.changed) dispatch({ type: 'APPLY_DOC', doc: setShapePoints(docAtStart, g.slideId, g.id, g.frame, g.points) })
+      setGesture(null)
+    })
+  }
+
   const selectedTable =
     selectedIds.length === 1
       ? slide.elements.filter(isKnownElement).find((el): el is TableElement => el.id === selectedIds[0] && el.type === 'table')
@@ -549,6 +687,67 @@ export function CanvasArea({
   const themeVars = extractThemeVars(doc.headExtra)
   const singleSelected =
     selectedIds.length === 1 ? slide.elements.filter(isKnownElement).find((el) => el.id === selectedIds[0]) : undefined
+  const strokeSel =
+    singleSelected && singleSelected.type === 'shape' && isStroke(singleSelected.shape) && !drawMode && editingTextId === null
+      ? singleSelected
+      : undefined
+  // 제스처 미리보기 중에는 미리보기 요소 기준으로 핸들 위치 갱신
+  const strokePreview =
+    strokeSel && previewSlide.elements.filter(isKnownElement).find((el): el is ShapeElement => el.id === strokeSel.id && el.type === 'shape')
+  const pointsInteraction: PointsInteraction | undefined = (() => {
+    const el = strokePreview
+    if (!el) return undefined
+    if (isPath(el.shape)) {
+      if (el.rotation !== 0) return undefined
+      const abs = absPointsOf(el.frame, el.points)
+      const handles: PointHandleSpec[] = []
+      const first = abs[0]
+      const last = abs[abs.length - 1]
+      if (!first || !last) return undefined
+      handles.push({ key: 'pt-0', x: first[0], y: first[1], cursor: 'move' })
+      handles.push({ key: `pt-${abs.length - 1}`, x: last[0], y: last[1], cursor: 'move' })
+      const guides: PointsInteraction['guides'] = []
+      if (el.shape === 'curve') {
+        const c1 = abs[1]
+        const c2 = abs[2]
+        if (c1 && c2) {
+          handles.push({ key: 'pt-1', x: c1[0], y: c1[1], cursor: 'move' })
+          handles.push({ key: 'pt-2', x: c2[0], y: c2[1], cursor: 'move' })
+          guides.push({ x1: first[0], y1: first[1], x2: c1[0], y2: c1[1] })
+          guides.push({ x1: last[0], y1: last[1], x2: c2[0], y2: c2[1] })
+        }
+      } else {
+        for (let s = 1; s < abs.length - 2; s++) {
+          const a = abs[s]
+          const b = abs[s + 1]
+          if (!a || !b) continue
+          const axis = segmentAxis([a[0], a[1]], [b[0], b[1]])
+          if (axis === null) continue // 비직교 세그먼트는 핸들 미제공 (스펙 9d §7)
+          handles.push({
+            key: `seg-${s}`,
+            x: (a[0] + b[0]) / 2,
+            y: (a[1] + b[1]) / 2,
+            cursor: axis === 'h' ? 'ns-resize' : 'ew-resize',
+          })
+        }
+      }
+      return { guides, handles, onPointerDown: beginPointDrag }
+    }
+    // line/arrow — 회전 반영 끝점 (rotation ≠ 0에서도 동작, 스펙 9d §5)
+    const cx = el.frame.left + el.frame.width / 2
+    const cy = el.frame.top + el.frame.height / 2
+    const rad = (el.rotation * Math.PI) / 180
+    const hx = (el.frame.width / 2) * Math.cos(rad)
+    const hy = (el.frame.width / 2) * Math.sin(rad)
+    return {
+      guides: [],
+      handles: [
+        { key: 'pt-0', x: cx - hx, y: cy - hy, cursor: 'move' },
+        { key: 'pt-1', x: cx + hx, y: cy + hy, cursor: 'move' },
+      ],
+      onPointerDown: beginPointDrag,
+    }
+  })()
   return (
     <main
       className={drawMode ? 'canvas-area drawing' : 'canvas-area'}
@@ -581,11 +780,14 @@ export function CanvasArea({
                 guides={gesture && (gesture.kind === 'move' || gesture.kind === 'resize') ? gesture.guides : []}
                 resize={
                   // 그리기 모드 중엔 핸들도 비활성 — 핸들의 stopPropagation이 beginDraw 도달을
-                  // 막아 직전에 그려 자동 선택된 요소가 의도치 않게 리사이즈/회전되는 결함 방지
-                  !drawMode && singleSelected && editingTextId !== singleSelected.id
+                  // 막아 직전에 그려 자동 선택된 요소가 의도치 않게 리사이즈/회전되는 결함 방지.
+                  // line/arrow는 8핸들·회전 핸들을 전용 끝점 핸들 2개로 대체한다 (Plan 9d Task 5).
+                  !drawMode && singleSelected && editingTextId !== singleSelected.id &&
+                  !(singleSelected.type === 'shape' && isLinear(singleSelected.shape))
                     ? { elementId: singleSelected.id, onHandlePointerDown: beginResize, onRotatePointerDown: beginRotate }
                     : undefined
                 }
+                points={pointsInteraction}
               />
               {drawDraft && (
                 <svg className="draw-preview" width={doc.slideWidth} height={doc.slideHeight}>

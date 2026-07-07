@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import type { TableSel } from '../App.tsx'
 import { createIdGen } from '../model/id.ts'
 import { LINEAR_INSERT_FRAME, PATH_INSERT_FRAME, addElement } from '../model/ops.ts'
+import { absPointsOf, lineFromEndpoints, moveElbowSegment, normalizePoints } from '../model/pathOps.ts'
 import type { DeckDoc } from '../model/types.ts'
 import { parseWebdeck } from '../model/parse.ts'
 import type { StrokeKind } from '../model/shapeSvg.ts'
@@ -756,5 +757,134 @@ describe('드래그 그리기 모드 확장 (Plan 9d Task 4)', () => {
     expect(added.type).toBe('shape')
     if (added.type !== 'shape') return
     expect(added.frame.height).toBe(170)
+  })
+})
+
+// ---- 전용 핸들 편집 (Plan 9d Task 5) ----
+
+function parseStrokeDoc(shapeMarkup: string): DeckDoc {
+  return parseWebdeck(`<!DOCTYPE html>
+<html lang="ko" data-webdeck-version="1">
+<head><meta charset="utf-8"><title>t</title></head>
+<body><main class="deck" data-slide-width="1280" data-slide-height="720">
+<section class="slide">${shapeMarkup}</section>
+</main></body></html>`)
+}
+
+const DOC_ELBOW = parseStrokeDoc(
+  '<div class="el el-shape" data-shape="elbow" data-points="0,0 50,0 50,100 100,100" style="left:100px; top:100px; width:320px; height:160px;"></div>',
+)
+const DOC_ELBOW_ROTATED = parseStrokeDoc(
+  '<div class="el el-shape" data-shape="elbow" data-points="0,0 50,0 50,100 100,100" style="left:100px; top:100px; width:320px; height:160px; transform:rotate(30deg);"></div>',
+)
+const DOC_CURVE = parseStrokeDoc(
+  '<div class="el el-shape" data-shape="curve" data-points="0,100 33.33,0 66.67,0 100,100" style="left:100px; top:100px; width:300px; height:100px;"></div>',
+)
+const DOC_LINE = parseStrokeDoc(
+  '<div class="el el-shape" data-shape="line" style="left:300px; top:296px; width:200px; height:8px;"></div>',
+)
+
+// 단일 stroke 요소 문서를 선택 상태로 렌더 — 기존 renderCanvasWithSelection 관례를 임의 doc으로 확장
+function renderStrokeSelected(doc: DeckDoc, drawMode: StrokeKind | null = null) {
+  const dispatch = vi.fn()
+  const elId = doc.slides[0]!.elements[0]!.id
+  const utils = render(
+    <CanvasArea
+      doc={doc}
+      slideIndex={0}
+      selectedIds={[elId]}
+      editingTextId={null}
+      dispatch={dispatch}
+      tableSel={null}
+      setTableSel={() => {}}
+      drawMode={drawMode}
+      setDrawMode={() => {}}
+      idGen={createIdGen('d')}
+    />,
+  )
+  return { dispatch, elId, ...utils }
+}
+
+describe('전용 핸들 (Plan 9d Task 5)', () => {
+  test('elbow 선택: 끝점 2 + 중간 세그먼트 핸들 1 (Z자), 8핸들도 유지', () => {
+    const { container } = renderStrokeSelected(DOC_ELBOW)
+    expect(container.querySelectorAll('.point-handle')).toHaveLength(3)
+    // 리사이즈 8 + 회전 1 = 9 (elbow는 점 핸들과 8핸들이 공존)
+    expect(container.querySelectorAll('.handle')).toHaveLength(9)
+    const seg = container.querySelector('[aria-label="점 핸들 seg-1"]') as HTMLElement
+    expect(seg).toBeTruthy()
+    // abs (260,100)~(260,260)의 중점
+    expect(seg.style.left).toBe('260px')
+    expect(seg.style.top).toBe('180px')
+  })
+
+  test('elbow 세그먼트 드래그: V 세그먼트는 좌우로만, 커밋 1회 + 재정규화', () => {
+    const { dispatch, container } = renderStrokeSelected(DOC_ELBOW)
+    const el0 = DOC_ELBOW.slides[0]!.elements[0]!
+    if (el0.type !== 'shape') throw new Error('shape 기대')
+    const absStart = absPointsOf(el0.frame, el0.points)
+    const seg = container.querySelector('[aria-label="점 핸들 seg-1"]')!
+    fireEvent.pointerDown(seg, { clientX: 260, clientY: 180 })
+    fireEvent.pointerMove(window, { clientX: 300, clientY: 999 })
+    fireEvent.pointerUp(window)
+    const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+    expect(applies).toHaveLength(1)
+    const el = (applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!
+    if (el.type !== 'shape') throw new Error('shape 기대')
+    const expected = normalizePoints(moveElbowSegment(absStart, 1, 300 - 260, 999 - 180))
+    expect(el.frame).toEqual(expected.frame)
+    expect(el.points).toEqual(expected.points)
+  })
+
+  test('elbow 끝점 드래그: 인접 축 동기 + frame 재정규화', () => {
+    const { dispatch, container } = renderStrokeSelected(DOC_ELBOW)
+    const pt0 = container.querySelector('[aria-label="점 핸들 pt-0"]')!
+    fireEvent.pointerDown(pt0, { clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(window, { clientX: 60, clientY: 140 })
+    fireEvent.pointerUp(window)
+    const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+    expect(applies).toHaveLength(1)
+    const el = (applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!
+    if (el.type !== 'shape') throw new Error('shape 기대')
+    const expected = normalizePoints([[60, 140], [260, 140], [260, 260], [420, 260]])
+    expect(el.frame).toEqual(expected.frame)
+    expect(el.points).toEqual(expected.points)
+  })
+
+  test('curve 선택: 끝점 2 + 제어점 2 + 가이드 2', () => {
+    const { container } = renderStrokeSelected(DOC_CURVE)
+    expect(container.querySelectorAll('.point-handle')).toHaveLength(4)
+    expect(container.querySelectorAll('.point-guide')).toHaveLength(2)
+  })
+
+  test('line 선택: 끝점 2개만, 8핸들·회전 핸들 없음', () => {
+    const { container } = renderStrokeSelected(DOC_LINE)
+    expect(container.querySelectorAll('.point-handle')).toHaveLength(2)
+    expect(container.querySelectorAll('.handle')).toHaveLength(0)
+  })
+
+  test('line 끝점 드래그: frame+rotation 재계산 1 APPLY_DOC', () => {
+    const { dispatch, container } = renderStrokeSelected(DOC_LINE)
+    const pt1 = container.querySelector('[aria-label="점 핸들 pt-1"]')!
+    fireEvent.pointerDown(pt1, { clientX: 500, clientY: 300 })
+    fireEvent.pointerMove(window, { clientX: 300, clientY: 500 })
+    fireEvent.pointerUp(window)
+    const applies = dispatch.mock.calls.filter(([a]) => a?.type === 'APPLY_DOC')
+    expect(applies).toHaveLength(1)
+    const el = (applies[0]![0].doc as DeckDoc).slides[0]!.elements[0]!
+    if (el.type !== 'shape') throw new Error('shape 기대')
+    const expected = lineFromEndpoints([300, 300], [300, 500], 8)
+    expect(el.frame).toEqual(expected.frame)
+    expect(el.rotation).toBe(expected.rotation)
+  })
+
+  test('회전된 elbow는 점 핸들 없음 (패널 수치로)', () => {
+    const { container } = renderStrokeSelected(DOC_ELBOW_ROTATED)
+    expect(container.querySelectorAll('.point-handle')).toHaveLength(0)
+  })
+
+  test('그리기 모드 중에는 점 핸들도 비표시', () => {
+    const { container } = renderStrokeSelected(DOC_ELBOW, 'line')
+    expect(container.querySelectorAll('.point-handle')).toHaveLength(0)
   })
 })
