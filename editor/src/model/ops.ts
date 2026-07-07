@@ -221,6 +221,13 @@ export function setShapeLineStyle(doc: DeckDoc, slideId: string, elementId: stri
   )
 }
 
+/** 경유점·frame 동시 갱신 — 재정규화 결과 커밋용. elbow/curve 외에는 무변경 */
+export function setShapePoints(doc: DeckDoc, slideId: string, elementId: string, frame: Frame, points: Point[]): DeckDoc {
+  return mapKnownElement(doc, slideId, elementId, (el) =>
+    el.type === 'shape' && isPath(el.shape) ? { ...el, frame: { ...frame }, points: points.map(([x, y]) => [x, y] as Point) } : el,
+  )
+}
+
 export function setElementRotation(doc: DeckDoc, slideId: string, elementId: string, rotation: number): DeckDoc {
   return mapKnownElement(doc, slideId, elementId, (el) => {
     // 비표준 transform 잔재를 제거 — 1급 rotation과의 중복 출력 방지

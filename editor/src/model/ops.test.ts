@@ -16,6 +16,7 @@ import {
   setElementRotation,
   setElementStyle,
   setShapeLineStyle,
+  setShapePoints,
   setSlideNotes,
   setSlideTransition,
   setSlideBg,
@@ -99,6 +100,22 @@ describe('요소 커맨드', () => {
     // wd-2는 fixture()의 rect 요소 — line/arrow가 아니므로 무변경
     const same = setShapeLineStyle(withLine, 'wd-1', 'wd-2', { strokeWidth: 6 })
     expect((same.slides[0]!.elements.find((e) => e.id === 'wd-2') as ShapeElement).strokeWidth).toBe(2)
+  })
+
+  test('setShapePoints는 elbow/curve의 frame+points만 갱신한다', () => {
+    const doc = fixture()
+    const gen = createIdGen('el')
+    const elbow = createShape(gen, 'elbow', { left: 0, top: 0, width: 100, height: 100 })
+    const withElbow = addElement(doc, 'wd-1', elbow)
+    const next = setShapePoints(withElbow, 'wd-1', elbow.id, { left: 10, top: 10, width: 50, height: 50 }, [[0, 0], [100, 100]])
+    const el = next.slides[0]!.elements.find((e) => e.id === elbow.id) as ShapeElement
+    expect(el.frame).toEqual({ left: 10, top: 10, width: 50, height: 50 })
+    expect(el.points).toEqual([[0, 0], [100, 100]])
+    // wd-2는 fixture()의 rect 요소 — elbow/curve가 아니므로 무변경
+    const same = setShapePoints(withElbow, 'wd-1', 'wd-2', { left: 1, top: 1, width: 1, height: 1 }, [[0, 0]])
+    const untouched = same.slides[0]!.elements.find((e) => e.id === 'wd-2') as ShapeElement
+    expect(untouched.frame).toEqual({ left: 0, top: 0, width: 100, height: 50 })
+    expect(untouched.points).toEqual([])
   })
 })
 
