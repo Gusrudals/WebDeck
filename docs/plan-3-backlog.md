@@ -74,3 +74,10 @@ Plan 3b(편집 상호작용 + 저장)까지 완료된 시점의 잔여 항목.
 - el-table 구조 위치(래퍼 직하·tr 사이)의 HTML 주석은 정준 재생성으로 보존되지 않음(셀 내부는 보존) — 필요 시 ai-guide에 한 줄 명시
 - Safari/Firefox contentEditable 붙여넣기 경로의 셀 공백 처리 미검증 (Chrome은 새니타이저가 정규화 — F1 수정으로 오탐은 원천 봉쇄됨)
 - 사이드/속성 패널 내부 팝오버(레이아웃·색)는 absolute 유지 — 세로 스크롤 패널이라 접근 가능(수용). 패널 바닥 근처에서 어색하면 fixedToAnchor 적용 검토
+
+## Plan 9c 이월 (태스크·최종 리뷰에서 백로그 판정)
+
+- 제스처 window 리스너의 창 밖 마우스 릴리스 스테일 문제 — 다음 클릭의 pointerup에서 의도치 않은 커밋 가능(beginDraw 포함 beginMove/beginResize/beginRotate/beginColResize 전부 공유, Plan 3b부터). 후속에서 setPointerCapture 일괄 전환 권장
+- beginDraw가 docAtStart 관례 미적용 — 그리기 중 Cmd+Z 시 스테일 doc 커밋 이론상 엣지(위 항목과 묶어 처리 권장). useShortcuts의 drawMode 비인지(그리기 중 Delete/undo 활성)도 동일 묶음
+- 슬라이드 밖 회색 여백에서 그리기 시작 가능 — 경계 밖 좌표의 선 생성(검증기 경고 수준, 스펙 이탈 아님)
+- 테스트 커버리지 소형 3건: arrow 기본값 data-head-end 미출력 전용 단언, 선 서식 다중 선택 일괄 패치, 머리 토글 no-op 케이스
